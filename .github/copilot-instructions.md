@@ -102,12 +102,14 @@ python wsdl_to_schema.py input.wsdl --main-model Request --output-dir custom_out
 - **ALWAYS use type hints** for function signatures
 - Example:
   ```python
-  def convert_to_pydantic(module_name: str, temp_dir: Path, output_dir: Path = None) -> tuple[dict, Path]:
+  def convert_to_pydantic(module_name: str, temp_dir: Path, output_dir: Path | None = None) -> tuple[dict, Path]:
       """Convert dataclasses to Pydantic models."""
       ...
   ```
-- Use modern Python 3.12+ type syntax (`list[str]` instead of `List[str]`)
-- Import types from `typing` only when necessary (e.g., `Optional`, `Union` for complex types)
+- Use modern Python 3.12+ type syntax:
+  - Use `list[str]` instead of `List[str]`
+  - Use `str | None` instead of `Optional[str]`
+  - Use `int | str` instead of `Union[int, str]`
 - Use `Path` from `pathlib` for file system paths, not strings
 
 ### Docstrings
@@ -119,6 +121,8 @@ python wsdl_to_schema.py input.wsdl --main-model Request --output-dir custom_out
   - Returns section with type and description
   - Raises section for exceptions
 - Class docstrings: Purpose and usage
+- Use Google-style format for hand-written code (Args:, Returns:, Raises:)
+- Note: xsdata-generated code uses reStructuredText format per `.xsdata.xml` config
 - Example:
   ```python
   def example_function(param1: str, param2: int) -> bool:
@@ -227,7 +231,8 @@ Do not modify this file without understanding the impact on generated code.
 
 ### File System Operations
 - Use `Path` objects from `pathlib` for cross-platform compatibility
-- Always use absolute paths in tools
+- Resolve to absolute paths when passing to external tools or for validation
+- Use relative paths for user-facing output and display
 - Clean up temporary directories (unless `--keep-temp` flag is used)
 - Respect .gitignore patterns - don't commit generated files
 
