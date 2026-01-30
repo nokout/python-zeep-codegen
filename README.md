@@ -20,6 +20,10 @@ The tool is designed to work alongside [zeep](https://docs.python-zeep.org/) for
 ✅ **Type Safety**: Full static type checking with mypy  
 ✅ **Zero Hardcoding**: Generic conversion logic works with any WSDL/XSD  
 ✅ **Coexistence Model**: Works alongside zeep for SOAP operations  
+✅ **Configuration Files**: Support for YAML/TOML config files for default settings  
+✅ **Plugin Architecture**: Extensible output format system  
+✅ **Comprehensive Testing**: 39 passing tests with pytest  
+✅ **Production Ready**: Context managers, proper error handling, logging  
 
 ## Installation
 
@@ -186,10 +190,8 @@ print(validated_order.model_dump_json())
 ## Command-Line Reference
 
 ```
-usage: wsdl_to_schema.py [-h] --main-model MAIN_MODEL [--module MODULE]
-                          [--models-dir MODELS_DIR]
-                          [--output-schema OUTPUT_SCHEMA]
-                          [--output-models OUTPUT_MODELS]
+usage: wsdl_to_schema.py [-h] --main-model MAIN_MODEL [--output-dir OUTPUT_DIR]
+                          [--keep-temp] [--verbose] [--config CONFIG]
                           xsd_file
 
 positional arguments:
@@ -201,17 +203,145 @@ required arguments:
                         (e.g., Order, Customer)
 
 optional arguments:
-  --module MODULE       Python module name for generated models
-                        (default: auto-detect from XSD filename)
-  --models-dir MODELS_DIR
-                        Directory for generated dataclass models
-                        (default: models)
-  --output-schema OUTPUT_SCHEMA
-                        Output path for JSON Schema
-                        (default: schemas/unified_schema.json)
-  --output-models OUTPUT_MODELS
-                        Output path for Pydantic models
-                        (default: generated/pydantic_models.py)
+  --output-dir OUTPUT_DIR
+                        Output directory for all generated files
+                        (default: output/[INPUT_NAME] or from config)
+  --keep-temp           Keep temporary directory with generated dataclasses
+                        (for debugging)
+  --verbose, -v         Enable verbose debug output
+  --config CONFIG       Path to configuration file (YAML or TOML)
+                        If not specified, searches for .zeep-codegen.yaml/.toml
+```
+
+## Configuration Files
+
+You can provide default values for CLI options using a configuration file. The tool automatically discovers `.zeep-codegen.yaml` or `.zeep-codegen.toml` in the current or parent directories.
+
+### YAML Format (.zeep-codegen.yaml)
+
+```yaml
+# Output directory for generated files
+output_dir: ./generated
+
+# Keep temporary directory after conversion
+keep_temp: false
+
+# Enable verbose/debug logging
+verbose: false
+
+# HTTP timeout in seconds for downloading remote WSDL/XSD
+timeout: 30
+```
+
+### TOML Format (.zeep-codegen.toml)
+
+```toml
+# Output directory for generated files
+output_dir = "./generated"
+
+# Keep temporary directory after conversion
+keep_temp = false
+
+# Enable verbose/debug logging
+verbose = false
+
+# HTTP timeout in seconds
+timeout = 30
+```
+
+### Using Configuration
+
+```bash
+# Auto-discover config file in current/parent directories
+python wsdl_to_schema.py input.xsd --main-model Order
+
+# Specify config file explicitly
+python wsdl_to_schema.py input.xsd --main-model Order --config my-config.yaml
+
+# CLI arguments override config file values
+python wsdl_to_schema.py input.xsd --main-model Order --verbose  # Overrides config
+```
+
+## Development
+
+### Type Checking
+
+The project uses mypy for static type checking:
+
+```bash
+# Run type checker
+python -m mypy wsdl_to_schema.py pipeline/ utils/ plugins/ exceptions.py
+
+# Type checking is configured in mypy.ini
+```
+
+### Testing
+
+Comprehensive test suite with pytest:
+
+```bash
+# Run all tests
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run specific test file
+pytest tests/test_conversion.py
+
+# Run with coverage
+pytest --cov=pipeline --cov=utils
+
+# Run only unit tests
+pytest -m unit
+
+# Run only integration tests
+pytest -m integration
+```
+
+**Test Coverage:**
+- 39 passing tests
+- Unit tests for all pipeline modules
+- Integration tests with real XSD files
+- Mocked external dependencies (subprocess, requests)
+- Context manager and error handling tests
+
+## Plugin Architecture
+
+The tool supports extensible output formats through a plugin system.
+
+### Built-in Plugins
+
+- **json_schema**: JSON Schema output (default)
+- **pydantic_code**: Python source code with Pydantic models
+
+### Creating Custom Plugins
+
+```python
+from utils.plugins import OutputPlugin, get_default_registry
+from pathlib import Path
+from typing import Dict, Type, Any
+
+class MyCustomPlugin(OutputPlugin):
+    name = "my_format"
+    description = "My custom output format"
+    
+    def generate(
+        self,
+        pydantic_models: Dict[str, Type[Any]],
+        main_model: str,
+        output_path: Path,
+        **options: Any
+    ) -> Path:
+        # Generate your custom format
+        with open(output_path, 'w') as f:
+            f.write("# My custom format\n")
+            # ... your logic here
+        return output_path
+
+# Register the plugin
+registry = get_default_registry()
+registry.register(MyCustomPlugin())
 ```
 
 ## Advanced: Manual Step Execution
@@ -251,29 +381,71 @@ This project includes comprehensive research documentation:
 
 ```
 python-zeep-codegen/
-├── wsdl_to_schema.py              # Main entry point (unified pipeline)
+├── wsdl_to_schema.py              # Main CLI entry point
+├── exceptions.py                   # Custom exception hierarchy
+├── pipeline/                       # Pipeline modules
+│   ├── __init__.py
+│   ├── download.py                # URL download functionality
+│   ├── generate.py                # xsdata dataclass generation
+│   ├── convert.py                 # Dataclass to Pydantic conversion
+│   └── schema.py                  # JSON Schema generation
 ├── utils/                          # Shared utilities
 │   ├── __init__.py
-│   └── conversion.py              # Shared conversion logic
-├── models/                         # Generated dataclasses (xsdata output)
-├── generated/                      # Generated Pydantic models
-├── schemas/                        # Generated JSON Schemas
+│   ├── conversion.py              # Conversion helpers
+│   ├── temp_manager.py            # Context managers for resources
+│   ├── config.py                  # Configuration file support
+│   └── plugins.py                 # Plugin architecture
+├── plugins/                        # Output format plugins
+│   └── __init__.py                # Built-in plugins (JSON Schema, Pydantic)
+├── tests/                          # Test suite
+│   ├── conftest.py                # Test fixtures
+│   ├── test_*.py                  # Unit and integration tests
+│   └── ...
+├── output/                         # Generated outputs (not in repo)
+├── .temp/                          # Temporary files (not in repo)
 ├── sample-complex.xsd             # Example XSD for testing
+├── sample.wsdl                    # Example WSDL for testing
 ├── requirements.txt               # Python dependencies
+├── mypy.ini                       # Type checker configuration
+├── pytest.ini                     # Test configuration
+├── .zeep-codegen.example.yaml    # Example YAML config
+├── .zeep-codegen.example.toml    # Example TOML config
 ├── README.md                      # This file
-├── RESEARCH_FINDINGS.md           # Technical documentation
-└── research-plan.md               # Research roadmap
+└── RESEARCH_FINDINGS.md           # Technical documentation
 ```
 
 ## Contributing
 
-Contributions are welcome! Areas for improvement:
+Contributions are welcome! The project now has:
+
+- **Type Safety**: Full mypy type checking with strict settings
+- **Test Coverage**: 39 passing tests covering core functionality
+- **Plugin Architecture**: Easy to add new output formats
+- **Configuration System**: YAML/TOML config file support
+
+### Development Setup
+
+```bash
+# Install dependencies including dev tools
+pip install -r requirements.txt
+
+# Run type checking
+python -m mypy wsdl_to_schema.py pipeline/ utils/ plugins/ exceptions.py
+
+# Run tests
+pytest -v
+
+# Run tests with coverage
+pytest --cov=pipeline --cov=utils
+```
+
+### Areas for Improvement
 
 - Support for WSDL 2.0 service definitions
-- Streaming/batch processing for large schemas
 - Additional output formats (OpenAPI, GraphQL schemas)
+- Performance optimizations (caching, streaming)
 - Enhanced error messages and validation
-- Automated testing suite
+- CI/CD pipeline integration
 
 ## License
 
