@@ -20,16 +20,78 @@ import inspect
 import json
 import tempfile
 import shutil
+import requests
 from pathlib import Path
 from dataclasses import is_dataclass
 from decimal import Decimal
 from datetime import datetime, date
 from enum import Enum
+from urllib.parse import urlparse
 
 from pydantic import BaseModel
 from xsdata.models.datatype import XmlDate, XmlDateTime
 
 from utils.conversion import dataclass_to_pydantic_model
+
+
+def download_from_url(url: str, timeout: int = 30) -> Path:
+    """
+    Download XSD/WSDL file from HTTP/HTTPS URL to temporary location.
+    
+    Args:
+        url: HTTP/HTTPS URL to download from
+        timeout: Request timeout in seconds
+    
+    Returns:
+        Path to downloaded file in temp directory
+    """
+    print(f"\n{'='*70}")
+    print("Downloading from URL")
+    print(f"{'='*70}")
+    print(f"  URL: {url}")
+    
+    try:
+        response = requests.get(url, timeout=timeout)
+        response.raise_for_status()
+        
+        # Determine filename from URL or Content-Disposition header
+        parsed_url = urlparse(url)
+        filename = Path(parsed_url.path).name
+        
+        # If no filename in URL, use generic name based on content type
+        if not filename or '.' not in filename:
+            content_type = response.headers.get('content-type', '')
+            if 'xml' in content_type.lower() or 'wsdl' in url.lower():
+                filename = 'downloaded.wsdl' if 'wsdl' in url.lower() else 'downloaded.xsd'
+            else:
+                filename = 'downloaded.xml'
+        
+        # Save to temp directory (use downloads subdirectory to avoid conflicts)
+        temp_dir = Path(".temp")
+        downloads_dir = temp_dir / "downloads"
+        downloads_dir.mkdir(parents=True, exist_ok=True)
+        file_path = downloads_dir / filename
+        
+        with open(file_path, 'wb') as f:
+            f.write(response.content)
+        
+        print(f"  ✓ Downloaded: {filename} ({len(response.content)} bytes)")
+        print(f"  ✓ Saved to: {file_path}")
+        
+        return file_path
+        
+    except requests.exceptions.Timeout:
+        print(f"\n❌ Error: Request timed out after {timeout} seconds")
+        sys.exit(1)
+    except requests.exceptions.ConnectionError:
+        print(f"\n❌ Error: Could not connect to {url}")
+        sys.exit(1)
+    except requests.exceptions.HTTPError as e:
+        print(f"\n❌ Error: HTTP {e.response.status_code} - {e.response.reason}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n❌ Error downloading file: {e}")
+        sys.exit(1)
 
 
 def generate_dataclasses(xsd_file: str, temp_dir: Path = None, keep_temp: bool = False) -> tuple[str, Path]:
@@ -53,10 +115,11 @@ def generate_dataclasses(xsd_file: str, temp_dir: Path = None, keep_temp: bool =
     if temp_dir is None:
         temp_dir = Path(".temp")
     
-    # Clean and recreate temp directory
-    if temp_dir.exists():
-        shutil.rmtree(temp_dir, ignore_errors=True)
+    # Clean generated_models subdirectory only (preserve downloads)
     temp_dir.mkdir(parents=True, exist_ok=True)
+    generated_dir = temp_dir / "generated_models"
+    if generated_dir.exists():
+        shutil.rmtree(generated_dir, ignore_errors=True)
     
     output_package = "generated_models"
     
@@ -282,11 +345,14 @@ def main():
         description="Convert XSD/WSDL files to JSON Schema",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
-  # Process XSD file
+  # Process local XSD file
   python wsdl_to_schema.py sample-complex.xsd --main-model Order
   
-  # Process WSDL file
+  # Process local WSDL file
   python wsdl_to_schema.py service.wsdl --main-model OrderRequestType
+  
+  # Process WSDL from HTTP URL
+  python wsdl_to_schema.py https://example.com/service?wsdl --main-model Order
   
   # Keep temporary files for debugging
   python wsdl_to_schema.py input.xsd --main-model Order --keep-temp
@@ -300,7 +366,7 @@ def main():
     parser.add_argument(
         'input_file',
         metavar='FILE',
-        help='Path to XSD or WSDL file'
+        help='Path to XSD/WSDL file or HTTP/HTTPS URL'
     )
     
     parser.add_argument(
@@ -323,16 +389,23 @@ def main():
     
     args = parser.parse_args()
     
-    # Validate input file exists
-    input_file = Path(args.input_file)
-    if not input_file.exists():
-        print(f"❌ Error: File not found: {args.input_file}")
-        sys.exit(1)
+    # Check if input is URL or local file
+    is_url = args.input_file.startswith(('http://', 'https://'))
     
-    # Validate file type
-    if input_file.suffix.lower() not in ['.xsd', '.wsdl']:
-        print(f"⚠️  Warning: File extension '{input_file.suffix}' is not .xsd or .wsdl")
-        print(f"    Proceeding anyway, but xsdata may not recognize the file format.")
+    if is_url:
+        # Download from URL
+        input_file = download_from_url(args.input_file)
+    else:
+        # Validate local file exists
+        input_file = Path(args.input_file)
+        if not input_file.exists():
+            print(f"❌ Error: File not found: {args.input_file}")
+            sys.exit(1)
+        
+        # Validate file type
+        if input_file.suffix.lower() not in ['.xsd', '.wsdl']:
+            print(f"⚠️  Warning: File extension '{input_file.suffix}' is not .xsd or .wsdl")
+            print(f"    Proceeding anyway, but xsdata may not recognize the file format.")
     
     print("\n" + "╔" + "═" * 68 + "╗")
     print("║" + " " * 18 + "XSD/WSDL TO JSON SCHEMA" + " " * 27 + "║")
@@ -342,7 +415,7 @@ def main():
     try:
         # Step 1: Generate dataclasses from XSD/WSDL to temp directory
         module_name, temp_dir = generate_dataclasses(
-            args.input_file, 
+            str(input_file), 
             keep_temp=args.keep_temp
         )
         
@@ -361,8 +434,9 @@ def main():
         print(f"  • JSON Schema: {schema_file}")
         if temp_dir and args.keep_temp:
             print(f"  • Temp directory: {temp_dir} (preserved)")
-        file_type = Path(args.input_file).suffix.upper().lstrip('.')
-        print(f"\nWorkflow: {file_type} → Dataclass (xsdata) → Pydantic → JSON Schema")
+        file_type = input_file.suffix.upper().lstrip('.')
+        source = 'URL' if is_url else 'File'
+        print(f"\nWorkflow: {source} ({file_type}) → Dataclass (xsdata) → Pydantic → JSON Schema")
         print()
     
     finally:
