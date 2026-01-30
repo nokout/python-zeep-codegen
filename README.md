@@ -9,6 +9,7 @@ A Python-based tool for converting WSDL/XSD definitions into modern, developer-f
 - **Python Dataclasses** from XSD schemas (via xsdata)
 - **Pydantic Models** for data validation and type safety
 - **JSON Schemas** for API documentation, form generation, and cross-platform compatibility
+- **Interactive Web Forms** for visualizing and testing data structures
 
 The tool is designed to work alongside [zeep](https://docs.python-zeep.org/) for SOAP operations while providing static type information and modern data validation.
 
@@ -17,6 +18,7 @@ The tool is designed to work alongside [zeep](https://docs.python-zeep.org/) for
 ✅ **Automated Pipeline**: Single command converts XSD → Dataclasses → Pydantic → JSON Schema  
 ✅ **Complex Structure Support**: Handles nested elements, arrays, enums, attributes, and mappings  
 ✅ **Unified Schema Generation**: Creates self-contained JSON Schema with `$defs` for all types  
+✅ **Web Form Generation**: Auto-generate interactive forms from JSON Schemas using React JSON Schema Form  
 ✅ **Type Safety**: Full static type checking with mypy  
 ✅ **Zero Hardcoding**: Generic conversion logic works with any WSDL/XSD  
 ✅ **Coexistence Model**: Works alongside zeep for SOAP operations  
@@ -54,9 +56,26 @@ python wsdl_to_schema.py sample-complex.xsd --main-model Order
 ```
 
 This will:
-1. Generate Python dataclasses in `models/`
-2. Convert them to Pydantic models in `generated/pydantic_models.py`
-3. Generate unified JSON Schema in `schemas/unified_schema.json`
+1. Generate Python dataclasses in a temporary directory
+2. Convert them to Pydantic models in `output/sample-complex/pydantic_models.py`
+3. Generate unified JSON Schema in `output/sample-complex/schema.json`
+
+### Generate Interactive Web Form
+
+Add `--generate-ui` to create an interactive web form:
+
+```bash
+python wsdl_to_schema.py sample-complex.xsd --main-model Order --generate-ui
+```
+
+This generates:
+- `output/sample-complex/ui/index.html` - Interactive form (open in browser)
+- `output/sample-complex/ui/README.md` - Integration guide
+- `output/sample-complex/ui/schema.json` - Schema reference (symlinked)
+
+**Try it now**: Open `output/sample-complex/ui/index.html` in your browser to see the form!
+
+![Web Form UI Screenshot](https://github.com/user-attachments/assets/1a89c859-211e-4053-b3c4-c3fd450ce45f)
 
 ### With Custom Module Name
 
@@ -77,13 +96,22 @@ python wsdl_to_schema.py input.xsd --main-model Order \
 
 ## Architecture
 
-### Three-Step Pipeline
+### Pipeline with Optional Web UI
 
 ```
 ┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
 │  XSD/WSDL   │─────────│  Dataclasses│─────────│   Pydantic  │─────────│    JSON     │
 │    File     │ xsdata  │   (typed)   │ dynamic │   Models    │ builtin │   Schema    │
-└─────────────┘         └─────────────┘         └─────────────┘         └─────────────┘
+└─────────────┘         └─────────────┘         └─────────────┘         └──────┬──────┘
+                                                                                │
+                                                                                │ optional
+                                                                                │ --generate-ui
+                                                                                ▼
+                                                                         ┌─────────────┐
+                                                                         │  Web Form   │
+                                                                         │     UI      │
+                                                                         │   (React)   │
+                                                                         └─────────────┘
 ```
 
 **Step 1: XSD → Dataclasses** (via xsdata)
@@ -103,17 +131,23 @@ python wsdl_to_schema.py input.xsd --main-model Order \
 - All types defined once, referenced via `$ref`
 - Self-contained and portable
 
+**Step 4: JSON Schema → Web Form UI** (optional, via `--generate-ui`)
+- Uses React JSON Schema Form (RJSF) library
+- CDN-hosted dependencies (no build required)
+- Generates standalone HTML with embedded schema
+- Includes integration guide and customization instructions
+
 ### Generated Files
 
 ```
-project/
-├── models/                          # Step 1 output
-│   └── sample_complex.py           # xsdata-generated dataclasses
-├── generated/                       # Step 2 output
-│   └── pydantic_models.py          # Pydantic models (for reference)
-└── schemas/                         # Step 3 output
-    ├── unified_schema.json         # Main JSON Schema
-    └── summary.json                # Metadata
+output/sample-complex/                  # Output directory (one per input file)
+├── pydantic_models.py                  # Step 2: Pydantic models
+├── schema.json                         # Step 3: JSON Schema
+├── summary.json                        # Metadata and statistics
+└── ui/                                 # Step 4: Web Form UI (optional)
+    ├── index.html                      # Interactive form (open in browser)
+    ├── schema.json                     # Schema reference (symlinked)
+    └── README.md                       # Integration instructions
 ```
 
 ## Usage Examples
@@ -183,35 +217,61 @@ validated_order = Order(**response_dict)
 print(validated_order.model_dump_json())
 ```
 
+### Example 4: Generate Interactive Web Form
+
+```bash
+# Generate form with default settings (React JSON Schema Form)
+python wsdl_to_schema.py order-system.xsd --main-model Order --generate-ui
+
+# Specify UI framework explicitly
+python wsdl_to_schema.py order-system.xsd --main-model Order --generate-ui --ui-framework react
+```
+
+**Generated UI Files:**
+```
+output/order-system/ui/
+├── index.html       # Standalone interactive form (open in browser)
+├── schema.json      # JSON Schema reference (symlinked)
+└── README.md        # Integration instructions and customization guide
+```
+
+**Features of Generated Form:**
+- ✅ Zero dependencies - CDN-hosted libraries
+- ✅ Client-side validation from JSON Schema
+- ✅ Mobile-responsive design
+- ✅ Support for nested objects, arrays, enums
+- ✅ Real-time validation feedback
+- ✅ Easy integration into existing projects
+
+**Customization:**
+The generated `README.md` includes detailed instructions for:
+- Customizing form styling
+- Integrating into React/Vue/Angular projects
+- Adding custom validation logic
+- Connecting to backend APIs
+
 ## Command-Line Reference
 
 ```
-usage: wsdl_to_schema.py [-h] --main-model MAIN_MODEL [--module MODULE]
-                          [--models-dir MODELS_DIR]
-                          [--output-schema OUTPUT_SCHEMA]
-                          [--output-models OUTPUT_MODELS]
-                          xsd_file
+usage: wsdl_to_schema.py [OPTIONS] INPUT_FILE
 
 positional arguments:
-  xsd_file              Path to XSD or WSDL file
+  INPUT_FILE              Path to XSD/WSDL file or HTTP/HTTPS URL
 
 required arguments:
-  --main-model MAIN_MODEL
-                        Name of the main/root model for the unified schema
-                        (e.g., Order, Customer)
+  --main-model TEXT       Name of the main/root model for the unified schema
+                          (e.g., Order, Customer)
 
 optional arguments:
-  --module MODULE       Python module name for generated models
-                        (default: auto-detect from XSD filename)
-  --models-dir MODELS_DIR
-                        Directory for generated dataclass models
-                        (default: models)
-  --output-schema OUTPUT_SCHEMA
-                        Output path for JSON Schema
-                        (default: schemas/unified_schema.json)
-  --output-models OUTPUT_MODELS
-                        Output path for Pydantic models
-                        (default: generated/pydantic_models.py)
+  --output-dir PATH       Output directory for all generated files
+                          (default: output/[INPUT_NAME])
+  --keep-temp             Keep temporary directory with generated dataclasses
+                          (for debugging)
+  -v, --verbose           Enable verbose debug output
+  --generate-ui           Generate interactive web form UI from the JSON Schema
+  --ui-framework [react]  UI framework to use for form generation
+                          (default: react)
+  --help                  Show this message and exit
 ```
 
 ## Advanced: Manual Step Execution
