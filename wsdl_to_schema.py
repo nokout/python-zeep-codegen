@@ -11,6 +11,9 @@ Orchestrates a three-step pipeline:
 The tool supports local files and HTTP/HTTPS URLs, with comprehensive error handling
 and optional debug modes for investigating conversion issues.
 
+Configuration can be provided via YAML/TOML files (.zeep-codegen.yaml or .zeep-codegen.toml)
+in the current directory or parent directories.
+
 Usage:
     python wsdl_to_schema.py input.xsd --main-model Order
     python wsdl_to_schema.py https://example.com/service.wsdl --main-model Request
@@ -29,6 +32,7 @@ from pipeline import (
     generate_json_schema
 )
 from exceptions import WSDLSchemaError
+from utils.config import Config
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -43,7 +47,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 @click.option(
     '--output-dir',
     type=click.Path(),
-    help='Output directory for all generated files (default: output/[INPUT_NAME])'
+    help='Output directory for all generated files (default: output/[INPUT_NAME] or from config)'
 )
 @click.option(
     '--keep-temp',
@@ -55,12 +59,18 @@ logger: logging.Logger = logging.getLogger(__name__)
     is_flag=True,
     help='Enable verbose debug output'
 )
+@click.option(
+    '--config',
+    type=click.Path(exists=True),
+    help='Path to configuration file (YAML or TOML). If not specified, searches for .zeep-codegen.yaml/.toml'
+)
 def main(
     input_file: str,
     main_model: str,
     output_dir: Optional[str],
     keep_temp: bool,
-    verbose: bool
+    verbose: bool,
+    config: Optional[str]
 ) -> None:
     """Convert XSD/WSDL files to JSON Schema.
 
@@ -68,6 +78,9 @@ def main(
       - Path to a local XSD file
       - Path to a local WSDL file  
       - HTTP/HTTPS URL to a remote WSDL/XSD
+
+    Configuration files (.zeep-codegen.yaml or .zeep-codegen.toml) can provide
+    default values for options. CLI arguments override config file values.
 
     Examples:
 
@@ -90,11 +103,39 @@ def main(
       With custom output directory:
       
         python wsdl_to_schema.py input.wsdl --main-model Request --output-dir custom_output
+        
+      With config file:
+      
+        python wsdl_to_schema.py input.xsd --main-model Order --config my-config.yaml
       
       Enable verbose logging:
       
         python wsdl_to_schema.py input.xsd --main-model Order --verbose
     """
+    
+    # Load configuration
+    cfg: Optional[Config] = None
+    if config:
+        # Load specified config file
+        try:
+            cfg = Config.load_from_file(Path(config))
+            click.echo(f"✓ Loaded config from {config}")
+        except Exception as e:
+            click.echo(f"⚠ Warning: Could not load config file: {e}")
+    else:
+        # Try to discover config file
+        cfg = Config.discover()
+        if cfg:
+            click.echo("✓ Using discovered config file")
+    
+    # Apply config defaults (CLI args take precedence)
+    if cfg:
+        if output_dir is None and cfg.get('output_dir'):
+            output_dir = cfg.get('output_dir')
+        if not keep_temp and cfg.get('keep_temp'):
+            keep_temp = cfg.get('keep_temp')
+        if not verbose and cfg.get('verbose'):
+            verbose = cfg.get('verbose')
     
     # Configure logging
     log_level: int = logging.DEBUG if verbose else logging.INFO
