@@ -9,7 +9,7 @@ import logging
 import subprocess
 import shutil
 from pathlib import Path
-from typing import Tuple, Optional, Final
+from typing import Tuple, Optional, Final, List
 
 from exceptions import XSDGenerationError
 
@@ -67,7 +67,7 @@ def generate_dataclasses(
     logger.info(f"Output package: {output_package}")
     
     # Run xsdata generate command - it will create files in current dir, so we need to chdir
-    cmd: list[str] = ["xsdata", "generate", "-p", output_package, str(Path(xsd_file).absolute())]
+    cmd: List[str] = ["xsdata", "generate", "-p", output_package, str(Path(xsd_file).absolute())]
     logger.debug(f"Running: {' '.join(cmd)}")
     
     result: subprocess.CompletedProcess[str] = subprocess.run(

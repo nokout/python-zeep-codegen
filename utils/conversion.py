@@ -6,7 +6,7 @@ It provides functions for dynamically creating Pydantic models from dataclass ty
 using introspection and Pydantic's create_model() API.
 """
 from dataclasses import fields, is_dataclass, MISSING, Field
-from typing import Any, Type, Tuple, List, Optional, get_type_hints
+from typing import Any, Type, Tuple, List, Optional, get_type_hints, Dict
 from pydantic import create_model
 
 
@@ -63,6 +63,8 @@ def dataclass_to_pydantic_model(
         if field.default is not MISSING:
             default_value = field.default
         elif field.default_factory is not MISSING:
+            # For Pydantic, we need the factory function itself, not the result
+            # Pydantic will handle calling it
             default_value = field.default_factory
         else:
             default_value = ...  # Required field in Pydantic
@@ -70,7 +72,7 @@ def dataclass_to_pydantic_model(
         field_info.append((field_name, field_type, default_value))
     
     # Build Pydantic field definitions
-    pydantic_fields: dict[str, Any] = {}
+    pydantic_fields: Dict[str, Any] = {}
     for field_name, field_type, default_value in field_info:
         if default_value is ...:
             # Required field

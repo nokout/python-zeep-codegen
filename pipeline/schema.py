@@ -1,5 +1,5 @@
 """
-Pipeline module for generating JSON Schema from Pydantic models.
+Pipeline module for JSON Schema generation from Pydantic models.
 
 This module handles Step 3 of the conversion pipeline: taking Pydantic models
 and generating a unified JSON Schema document with all type definitions in $defs.
@@ -7,7 +7,7 @@ and generating a unified JSON Schema document with all type definitions in $defs
 import logging
 import json
 from pathlib import Path
-from typing import Dict, Type, Any, Optional
+from typing import Dict, Type, Any, Optional, List
 
 from exceptions import SchemaGenerationError
 
@@ -80,7 +80,7 @@ def generate_json_schema(
     if '$defs' in schema:
         logger.info(f"Main model: {main_model_name}")
         logger.info(f"Nested definitions: {len(schema['$defs'])} types")
-        defs_list: list[str] = list(schema['$defs'].keys())
+        defs_list: List[str] = list(schema['$defs'].keys())
         types_summary: str = ', '.join(defs_list[:8])
         if len(defs_list) > 8:
             types_summary += f"... (+{len(defs_list) - 8} more)"
