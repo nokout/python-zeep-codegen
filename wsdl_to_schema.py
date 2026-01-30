@@ -117,11 +117,11 @@ def generate_dataclasses(xsd_file: str, temp_dir: Path = None, keep_temp: bool =
     
     # Clean generated_models subdirectory only (preserve downloads)
     temp_dir.mkdir(parents=True, exist_ok=True)
-    generated_dir = temp_dir / "generated_models"
-    if generated_dir.exists():
-        shutil.rmtree(generated_dir, ignore_errors=True)
+    dataclasses_dir = temp_dir / "generated_dataclasses"
+    if dataclasses_dir.exists():
+        shutil.rmtree(dataclasses_dir, ignore_errors=True)
     
-    output_package = "generated_models"
+    output_package = "generated_dataclasses"
     
     print(f"  Temp directory: {temp_dir}")
     print(f"  Output package: {output_package}")
