@@ -132,10 +132,10 @@ def main(
     if cfg:
         if output_dir is None and cfg.get('output_dir'):
             output_dir = cfg.get('output_dir')
-        if not keep_temp and cfg.get('keep_temp'):
-            keep_temp = cfg.get('keep_temp')
-        if not verbose and cfg.get('verbose'):
-            verbose = cfg.get('verbose')
+        if not keep_temp:
+            keep_temp = bool(cfg.get('keep_temp', False))
+        if not verbose:
+            verbose = bool(cfg.get('verbose', False))
     
     # Configure logging
     log_level: int = logging.DEBUG if verbose else logging.INFO

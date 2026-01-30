@@ -29,7 +29,7 @@ The tool is designed to work alongside [zeep](https://docs.python-zeep.org/) for
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.11+
 - pip or uv package manager
 
 ### Setup

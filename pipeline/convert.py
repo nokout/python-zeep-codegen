@@ -14,7 +14,7 @@ from dataclasses import is_dataclass
 from decimal import Decimal
 from datetime import datetime, date
 from enum import Enum
-from typing import Dict, Tuple, Any, Type, Optional
+from typing import Dict, Tuple, Any, Type, Optional, List
 
 from xsdata.models.datatype import XmlDate, XmlDateTime
 
@@ -71,7 +71,7 @@ def convert_to_pydantic(
             raise ConversionError(error_msg)
         
         # Find all dataclasses
-        dataclass_types: list[Tuple[str, Type[Any]]] = []
+        dataclass_types: List[Tuple[str, Type[Any]]] = []
         for name, obj in inspect.getmembers(module):
             if inspect.isclass(obj) and is_dataclass(obj):
                 dataclass_types.append((name, obj))
@@ -136,7 +136,7 @@ def convert_to_pydantic(
             
             for name, model in pydantic_models.items():
                 # Get field definitions
-                fields_str: list[str] = []
+                fields_str: List[str] = []
                 for field_name, field_info in model.model_fields.items():
                     field_type: str = str(field_info.annotation).replace('typing.', '')
                     if field_info.is_required():
