@@ -1,53 +1,71 @@
 """
 Pipeline module for downloading WSDL/XSD files from URLs.
+
+This module provides functionality to download XSD/WSDL files from HTTP/HTTPS URLs,
+with proper timeout handling and error reporting.
 """
 import logging
 import requests
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, ParseResult
+from typing import Final
 
 from exceptions import DownloadError
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
+
+# Constants
+DEFAULT_TIMEOUT: Final[int] = 30
+TEMP_DIR: Final[str] = ".temp"
+DOWNLOADS_SUBDIR: Final[str] = "downloads"
 
 
-def download_from_url(url: str, timeout: int = 30) -> Path:
+def download_from_url(url: str, timeout: int = DEFAULT_TIMEOUT) -> Path:
     """
     Download XSD/WSDL file from HTTP/HTTPS URL to temporary location.
     
+    Downloads a file from the specified URL and saves it to a temporary directory
+    with proper filename detection from the URL or Content-Disposition header.
+    
     Args:
         url: HTTP/HTTPS URL to download from
-        timeout: Request timeout in seconds
+        timeout: Request timeout in seconds (default: 30)
     
     Returns:
         Path to downloaded file in temp directory
     
     Raises:
-        DownloadError: If download fails for any reason
+        DownloadError: If download fails due to timeout, connection error,
+                      HTTP error, or other issues
+    
+    Example:
+        >>> path = download_from_url('https://example.com/service.wsdl')
+        >>> print(path)
+        .temp/downloads/service.wsdl
     """
     logger.info(f"Downloading from URL: {url}")
     
     try:
-        response = requests.get(url, timeout=timeout)
+        response: requests.Response = requests.get(url, timeout=timeout)
         response.raise_for_status()
         
         # Determine filename from URL or Content-Disposition header
-        parsed_url = urlparse(url)
-        filename = Path(parsed_url.path).name
+        parsed_url: ParseResult = urlparse(url)
+        filename: str = Path(parsed_url.path).name
         
         # If no filename in URL, use generic name based on content type
         if not filename or '.' not in filename:
-            content_type = response.headers.get('content-type', '')
+            content_type: str = response.headers.get('content-type', '')
             if 'xml' in content_type.lower() or 'wsdl' in url.lower():
                 filename = 'downloaded.wsdl' if 'wsdl' in url.lower() else 'downloaded.xsd'
             else:
                 filename = 'downloaded.xml'
         
         # Save to temp directory (use downloads subdirectory to avoid conflicts)
-        temp_dir = Path(".temp")
-        downloads_dir = temp_dir / "downloads"
+        temp_dir: Path = Path(TEMP_DIR)
+        downloads_dir: Path = temp_dir / DOWNLOADS_SUBDIR
         downloads_dir.mkdir(parents=True, exist_ok=True)
-        file_path = downloads_dir / filename
+        file_path: Path = downloads_dir / filename
         
         with open(file_path, 'wb') as f:
             f.write(response.content)

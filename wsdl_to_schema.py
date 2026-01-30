@@ -2,20 +2,25 @@
 """
 WSDL/XSD to JSON Schema Converter
 
-This is the main entry point for converting WSDL/XSD files to JSON Schemas.
-It orchestrates the complete pipeline:
+Main entry point for converting WSDL/XSD files to JSON Schemas with Pydantic models.
+Orchestrates a three-step pipeline:
   1. Generate Python dataclasses from XSD using xsdata (in temp directory)
-  2. Convert dataclasses to Pydantic models
+  2. Convert dataclasses to Pydantic models with validation
   3. Generate unified JSON Schema with all type definitions
+
+The tool supports local files and HTTP/HTTPS URLs, with comprehensive error handling
+and optional debug modes for investigating conversion issues.
 
 Usage:
     python wsdl_to_schema.py input.xsd --main-model Order
-    python wsdl_to_schema.py input.xsd --main-model Order --keep-temp
+    python wsdl_to_schema.py https://example.com/service.wsdl --main-model Request
+    python wsdl_to_schema.py input.xsd --main-model Order --keep-temp --verbose
 """
 import click
 import logging
 import shutil
 from pathlib import Path
+from typing import Optional
 
 from pipeline import (
     download_from_url,
@@ -25,7 +30,7 @@ from pipeline import (
 )
 from exceptions import WSDLSchemaError
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 @click.command()
@@ -50,7 +55,13 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help='Enable verbose debug output'
 )
-def main(input_file, main_model, output_dir, keep_temp, verbose):
+def main(
+    input_file: str,
+    main_model: str,
+    output_dir: Optional[str],
+    keep_temp: bool,
+    verbose: bool
+) -> None:
     """Convert XSD/WSDL files to JSON Schema.
 
     INPUT_FILE can be:
@@ -86,32 +97,33 @@ def main(input_file, main_model, output_dir, keep_temp, verbose):
     """
     
     # Configure logging
-    log_level = logging.DEBUG if verbose else logging.INFO
+    log_level: int = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
         format='%(levelname)s: %(message)s'
     )
     
     # Check if input is URL or local file
-    is_url = input_file.startswith(('http://', 'https://'))
+    is_url: bool = input_file.startswith(('http://', 'https://'))
     
     if is_url:
         # Download from URL
         try:
-            input_file = download_from_url(input_file)
+            downloaded_path: Path = download_from_url(input_file)
+            input_file = str(downloaded_path)
         except WSDLSchemaError as e:
             click.echo(f"❌ Error: {e}")
             raise click.Abort()
     else:
         # Validate local file exists
-        input_file = Path(input_file)
-        if not input_file.exists():
+        input_path: Path = Path(input_file)
+        if not input_path.exists():
             click.echo(f"❌ Error: File not found: {input_file}")
             raise click.Abort()
         
         # Validate file type
-        if input_file.suffix.lower() not in ['.xsd', '.wsdl']:
-            logger.warning(f"File extension '{input_file.suffix}' is not .xsd or .wsdl")
+        if input_path.suffix.lower() not in ['.xsd', '.wsdl']:
+            logger.warning(f"File extension '{input_path.suffix}' is not .xsd or .wsdl")
             logger.warning("Proceeding anyway, but xsdata may not recognize the file format.")
     
     click.echo("\n" + "╔" + "═" * 68 + "╗")
@@ -119,18 +131,20 @@ def main(input_file, main_model, output_dir, keep_temp, verbose):
     click.echo("╚" + "═" * 68 + "╝")
     
     # Determine output directory
+    final_output_dir: Path
     if output_dir:
-        output_dir = Path(output_dir)
+        final_output_dir = Path(output_dir)
     else:
         # Use input filename as output directory name (preserve original name)
-        output_dir = Path("output") / input_file.stem
+        final_output_dir = Path("output") / Path(input_file).stem
     
-    temp_dir = None
+    temp_dir: Optional[Path] = None
     try:
         # Step 1: Generate dataclasses from XSD/WSDL to temp directory
         click.echo(f"\n{'='*70}")
         click.echo("Step 1: Generating Dataclasses from XSD/WSDL")
         click.echo(f"{'='*70}")
+        module_name: str
         module_name, temp_dir = generate_dataclasses(
             str(input_file), 
             keep_temp=keep_temp
@@ -140,13 +154,17 @@ def main(input_file, main_model, output_dir, keep_temp, verbose):
         click.echo(f"\n{'='*70}")
         click.echo("Step 2: Converting Dataclasses to Pydantic Models")
         click.echo(f"{'='*70}")
-        pydantic_models, models_file = convert_to_pydantic(module_name, temp_dir, output_dir)
+        pydantic_models, models_file = convert_to_pydantic(
+            module_name, temp_dir, final_output_dir
+        )
         
         # Step 3: Generate JSON Schema
         click.echo(f"\n{'='*70}")
         click.echo("Step 3: Generating JSON Schema")
         click.echo(f"{'='*70}")
-        schema_file = generate_json_schema(pydantic_models, main_model, output_dir)
+        schema_file: Path = generate_json_schema(
+            pydantic_models, main_model, final_output_dir
+        )
         
         # Final summary
         click.echo(f"\n{'='*70}")
@@ -157,8 +175,8 @@ def main(input_file, main_model, output_dir, keep_temp, verbose):
         click.echo(f"  • JSON Schema: {schema_file}")
         if temp_dir and keep_temp:
             click.echo(f"  • Temp directory: {temp_dir} (preserved)")
-        file_type = input_file.suffix.upper().lstrip('.')
-        source = 'URL' if is_url else 'File'
+        file_type: str = Path(input_file).suffix.upper().lstrip('.')
+        source: str = 'URL' if is_url else 'File'
         click.echo(f"\nWorkflow: {source} ({file_type}) → Dataclass (xsdata) → Pydantic → JSON Schema")
         click.echo()
     
