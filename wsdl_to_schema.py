@@ -45,7 +45,7 @@ def generate_dataclasses(xsd_file: str, temp_dir: Path = None, keep_temp: bool =
         Tuple of (module_name, temp_dir_path)
     """
     print(f"\n{'='*70}")
-    print("Step 1: Generating Dataclasses from XSD")
+    print("Step 1: Generating Dataclasses from XSD/WSDL")
     print(f"{'='*70}")
     print(f"  Input: {xsd_file}")
     
@@ -279,24 +279,27 @@ def generate_json_schema(pydantic_models: dict, main_model_name: str, output_fil
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert WSDL/XSD files to JSON Schema",
+        description="Convert XSD/WSDL files to JSON Schema",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Basic usage (auto-detects module name from XSD file)
+        epilog="""Examples:
+  # Process XSD file
   python wsdl_to_schema.py sample-complex.xsd --main-model Order
+  
+  # Process WSDL file
+  python wsdl_to_schema.py service.wsdl --main-model OrderRequestType
   
   # Keep temporary files for debugging
   python wsdl_to_schema.py input.xsd --main-model Order --keep-temp
   
   # With custom output locations
-  python wsdl_to_schema.py input.xsd --main-model Order \\
+  python wsdl_to_schema.py input.wsdl --main-model Request \\
       --output-schema schemas/my_schema.json
 """
     )
     
     parser.add_argument(
-        'xsd_file',
+        'input_file',
+        metavar='FILE',
         help='Path to XSD or WSDL file'
     )
     
@@ -320,20 +323,26 @@ Examples:
     
     args = parser.parse_args()
     
-    # Validate XSD file exists
-    if not Path(args.xsd_file).exists():
-        print(f"❌ Error: File not found: {args.xsd_file}")
+    # Validate input file exists
+    input_file = Path(args.input_file)
+    if not input_file.exists():
+        print(f"❌ Error: File not found: {args.input_file}")
         sys.exit(1)
     
+    # Validate file type
+    if input_file.suffix.lower() not in ['.xsd', '.wsdl']:
+        print(f"⚠️  Warning: File extension '{input_file.suffix}' is not .xsd or .wsdl")
+        print(f"    Proceeding anyway, but xsdata may not recognize the file format.")
+    
     print("\n" + "╔" + "═" * 68 + "╗")
-    print("║" + " " * 18 + "WSDL/XSD TO JSON SCHEMA" + " " * 27 + "║")
+    print("║" + " " * 18 + "XSD/WSDL TO JSON SCHEMA" + " " * 27 + "║")
     print("╚" + "═" * 68 + "╝")
     
     temp_dir = None
     try:
-        # Step 1: Generate dataclasses from XSD to temp directory
+        # Step 1: Generate dataclasses from XSD/WSDL to temp directory
         module_name, temp_dir = generate_dataclasses(
-            args.xsd_file, 
+            args.input_file, 
             keep_temp=args.keep_temp
         )
         
@@ -352,7 +361,8 @@ Examples:
         print(f"  • JSON Schema: {schema_file}")
         if temp_dir and args.keep_temp:
             print(f"  • Temp directory: {temp_dir} (preserved)")
-        print(f"\nWorkflow: XSD → Dataclass (xsdata) → Pydantic → JSON Schema")
+        file_type = Path(args.input_file).suffix.upper().lstrip('.')
+        print(f"\nWorkflow: {file_type} → Dataclass (xsdata) → Pydantic → JSON Schema")
         print()
     
     finally:
