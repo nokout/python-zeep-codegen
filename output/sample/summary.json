@@ -1,0 +1,15 @@
+{
+  "main_model": "OrderRequestType",
+  "total_models": 7,
+  "schema_file": "output/sample/schema.json",
+  "nested_types": 3,
+  "models": [
+    "CustomerType",
+    "ItemListType",
+    "ItemType",
+    "OrderRequest",
+    "OrderRequestType",
+    "OrderResponse",
+    "OrderResponseType"
+  ]
+}
