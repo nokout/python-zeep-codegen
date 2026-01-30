@@ -5,6 +5,8 @@ This module generates interactive web forms using React JSON Schema Form (RJSF).
 """
 import logging
 import json
+import shutil
+import html
 from pathlib import Path
 from datetime import datetime
 
@@ -42,7 +44,7 @@ def generate_web_ui(
     
     # Load the schema
     try:
-        with open(schema_file, 'r') as f:
+        with open(schema_file, 'r', encoding='utf-8') as f:
             schema = json.load(f)
     except json.JSONDecodeError as e:
         raise UIGenerationError(f"Invalid JSON schema: {e}")
@@ -88,13 +90,13 @@ def _generate_react_form(
         raise UIGenerationError(f"Template not found: {template_path}")
     
     try:
-        with open(template_path, 'r') as f:
+        with open(template_path, 'r', encoding='utf-8') as f:
             template = f.read()
     except Exception as e:
         raise UIGenerationError(f"Failed to load template: {e}")
     
-    # Prepare template variables
-    title = f"{main_model_name} Web Form"
+    # Prepare template variables - escape HTML to prevent XSS
+    title = html.escape(f"{main_model_name} Web Form")
     schema_json = json.dumps(schema, indent=2)
     
     # Simple template replacement (not using Jinja2 to minimize dependencies)
@@ -104,7 +106,7 @@ def _generate_react_form(
     # Write HTML file
     html_file = ui_dir / "index.html"
     try:
-        with open(html_file, 'w') as f:
+        with open(html_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
         logger.info(f"Created: {html_file}")
     except Exception as e:
@@ -123,7 +125,6 @@ def _generate_react_form(
         # Symlinks might fail on some systems, copy instead
         logger.warning(f"Could not create symlink, copying instead: {e}")
         try:
-            import shutil
             shutil.copy2(schema_file, schema_link)
             logger.debug(f"Copied schema to: {schema_link}")
         except Exception as copy_error:
@@ -154,7 +155,7 @@ def _generate_readme(
         raise UIGenerationError(f"README template not found: {template_path}")
     
     try:
-        with open(template_path, 'r') as f:
+        with open(template_path, 'r', encoding='utf-8') as f:
             template = f.read()
     except Exception as e:
         raise UIGenerationError(f"Failed to load README template: {e}")
@@ -163,8 +164,8 @@ def _generate_readme(
     total_types = len(schema.get('$defs', {})) + 1  # +1 for main model
     nested_types = len(schema.get('$defs', {}))
     
-    # Format model list
-    model_list = [main_model_name + " (main)"]
+    # Format model list - all items with leading dash for consistent markdown
+    model_list = [f"- {main_model_name} (main)"]
     if '$defs' in schema:
         model_list.extend([f"- {name}" for name in sorted(schema['$defs'].keys())])
     model_list_str = '\n'.join(model_list)
@@ -182,7 +183,7 @@ def _generate_readme(
     # Write README
     readme_file = ui_dir / "README.md"
     try:
-        with open(readme_file, 'w') as f:
+        with open(readme_file, 'w', encoding='utf-8') as f:
             f.write(readme_content)
         logger.info(f"Created: {readme_file}")
     except Exception as e:
