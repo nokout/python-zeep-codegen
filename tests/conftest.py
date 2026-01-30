@@ -29,12 +29,12 @@ def temp_test_dir() -> Generator[Path, None, None]:
 @pytest.fixture
 def sample_xsd_file() -> Path:
     """
-    Path to the sample-complex.xsd test file.
+    Path to the sample.xsd test file.
     
     Returns:
         Path to the sample XSD file
     """
-    return Path(__file__).parent.parent / "sample-complex.xsd"
+    return Path(__file__).parent / "sample.xsd"
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ def sample_wsdl_file() -> Path:
     Returns:
         Path to the sample WSDL file
     """
-    return Path(__file__).parent.parent / "sample.wsdl"
+    return Path(__file__).parent / "sample.wsdl"
 
 
 @pytest.fixture

@@ -27,12 +27,17 @@ The tool is designed to work alongside [zeep](https://docs.python-zeep.org/) for
 
 ## Installation
 
-### Prerequisites
+### From PyPI (Recommended)
 
-- Python 3.11+
-- pip or uv package manager
+```bash
+# Install latest stable version
+pip install python-zeep-codegen
 
-### Setup
+# Or with development tools
+pip install "python-zeep-codegen[dev]"
+```
+
+### From Source
 
 ```bash
 # Clone the repository
@@ -43,9 +48,17 @@ cd python-zeep-codegen
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install in editable mode
+pip install -e .
+
+# Or with development dependencies
+pip install -e ".[dev]"
 ```
+
+### Prerequisites
+
+- Python 3.12+
+- pip or uv package manager
 
 ## Quick Start
 
@@ -54,7 +67,11 @@ pip install -r requirements.txt
 Convert an XSD file to JSON Schema in one command:
 
 ```bash
-python wsdl_to_schema.py sample-complex.xsd --main-model Order
+# If installed from PyPI
+wsdl-to-schema tests/sample.xsd --main-model Order
+
+# If running from source
+python wsdl_to_schema.py tests/sample.xsd --main-model Order
 ```
 
 This will:
@@ -253,16 +270,28 @@ timeout = 30
 
 ```bash
 # Auto-discover config file in current/parent directories
-python wsdl_to_schema.py input.xsd --main-model Order
+wsdl-to-schema input.xsd --main-model Order
 
 # Specify config file explicitly
-python wsdl_to_schema.py input.xsd --main-model Order --config my-config.yaml
+wsdl-to-schema input.xsd --main-model Order --config my-config.yaml
 
 # CLI arguments override config file values
-python wsdl_to_schema.py input.xsd --main-model Order --verbose  # Overrides config
+wsdl-to-schema input.xsd --main-model Order --verbose  # Overrides config
 ```
 
 ## Development
+
+### Setup Development Environment
+
+```bash
+# Clone and install with dev dependencies
+git clone https://github.com/nokout/python-zeep-codegen.git
+cd python-zeep-codegen
+pip install -e ".[dev]"
+
+# Or install dev requirements separately
+pip install -r requirements-dev.txt
+```
 
 ### Type Checking
 
@@ -399,12 +428,13 @@ python-zeep-codegen/
 │   └── __init__.py                # Built-in plugins (JSON Schema, Pydantic)
 ├── tests/                          # Test suite
 │   ├── conftest.py                # Test fixtures
+│   ├── sample.xsd                 # Sample XSD for testing
+│   ├── sample.wsdl                # Sample WSDL for testing
 │   ├── test_*.py                  # Unit and integration tests
 │   └── ...
 ├── output/                         # Generated outputs (not in repo)
 ├── .temp/                          # Temporary files (not in repo)
-├── sample-complex.xsd             # Example XSD for testing
-├── sample.wsdl                    # Example WSDL for testing
+
 ├── requirements.txt               # Python dependencies
 ├── mypy.ini                       # Type checker configuration
 ├── pytest.ini                     # Test configuration
@@ -412,31 +442,6 @@ python-zeep-codegen/
 ├── .zeep-codegen.example.toml    # Example TOML config
 ├── README.md                      # This file
 └── RESEARCH_FINDINGS.md           # Technical documentation
-```
-
-## Contributing
-
-Contributions are welcome! The project now has:
-
-- **Type Safety**: Full mypy type checking with strict settings
-- **Test Coverage**: 39 passing tests covering core functionality
-- **Plugin Architecture**: Easy to add new output formats
-- **Configuration System**: YAML/TOML config file support
-
-### Development Setup
-
-```bash
-# Install dependencies including dev tools
-pip install -r requirements.txt
-
-# Run type checking
-python -m mypy wsdl_to_schema.py pipeline/ utils/ plugins/ exceptions.py
-
-# Run tests
-pytest -v
-
-# Run tests with coverage
-pytest --cov=pipeline --cov=utils
 ```
 
 ### Areas for Improvement

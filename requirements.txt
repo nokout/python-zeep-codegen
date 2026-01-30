@@ -1,23 +1,12 @@
-# Core dependencies for WSDL/XSD to JSON Schema conversion
-pydantic==2.12.5
-xsdata==26.1
+# Production dependencies
+# Install with: pip install -r requirements.txt
+# Or from source: pip install -e .
+# Or with dev dependencies: pip install -e ".[dev]"
 
-# XML parsing and handling
+pydantic>=2.12.0,<3.0.0
+xsdata>=26.0,<27.0
 lxml>=4.9.0
-
-# HTTP/HTTPS downloads
 requests>=2.32.0
-
-# CLI and utilities  
 click>=8.0.0
-
-# Configuration file support
 pyyaml>=6.0
-tomli>=2.0.0; python_version < '3.11'
-
-# Development and testing
-pytest>=8.0.0
-pytest-mock>=3.12.0
-mypy>=1.11.0
-types-requests>=2.32.0
-types-pyyaml>=6.0.0
+tomli>=2.0.0; python_version < "3.11"

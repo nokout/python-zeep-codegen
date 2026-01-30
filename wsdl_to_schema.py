@@ -86,7 +86,7 @@ def main(
 
       Process local XSD file:
       
-        python wsdl_to_schema.py sample-complex.xsd --main-model Order
+        python wsdl_to_schema.py tests/sample.xsd --main-model Order
 
       Process local WSDL file:
       
