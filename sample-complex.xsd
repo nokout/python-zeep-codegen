@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/order"
+           xmlns:tns="http://example.com/order"
+           elementFormDefault="qualified">
+
+    <!-- Simple Types -->
+    <xs:simpleType name="OrderStatusType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="pending"/>
+            <xs:enumeration value="processing"/>
+            <xs:enumeration value="shipped"/>
+            <xs:enumeration value="delivered"/>
+            <xs:enumeration value="cancelled"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!-- Complex Type: Address with nested elements -->
+    <xs:complexType name="AddressType">
+        <xs:sequence>
+            <xs:element name="street" type="xs:string"/>
+            <xs:element name="city" type="xs:string"/>
+            <xs:element name="state" type="xs:string"/>
+            <xs:element name="postalCode" type="xs:string"/>
+            <xs:element name="country" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Complex Type: Contact Information -->
+    <xs:complexType name="ContactType">
+        <xs:sequence>
+            <xs:element name="email" type="xs:string"/>
+            <xs:element name="phone" type="xs:string" minOccurs="0"/>
+            <xs:element name="mobile" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Complex Type: Customer with nested complex types -->
+    <xs:complexType name="CustomerType">
+        <xs:sequence>
+            <xs:element name="customerId" type="xs:string"/>
+            <xs:element name="name" type="xs:string"/>
+            <xs:element name="contact" type="tns:ContactType"/>
+            <xs:element name="billingAddress" type="tns:AddressType"/>
+            <xs:element name="shippingAddress" type="tns:AddressType" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Complex Type: Product with attributes -->
+    <xs:complexType name="ProductType">
+        <xs:sequence>
+            <xs:element name="productId" type="xs:string"/>
+            <xs:element name="name" type="xs:string"/>
+            <xs:element name="description" type="xs:string" minOccurs="0"/>
+            <xs:element name="price" type="xs:decimal"/>
+            <xs:element name="category" type="xs:string"/>
+            <xs:element name="tags" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="sku" type="xs:string" use="required"/>
+        <xs:attribute name="inStock" type="xs:boolean" default="true"/>
+    </xs:complexType>
+
+    <!-- Complex Type: Order Item (array element) -->
+    <xs:complexType name="OrderItemType">
+        <xs:sequence>
+            <xs:element name="product" type="tns:ProductType"/>
+            <xs:element name="quantity" type="xs:int"/>
+            <xs:element name="unitPrice" type="xs:decimal"/>
+            <xs:element name="discount" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="subtotal" type="xs:decimal"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Complex Type: Payment Information -->
+    <xs:complexType name="PaymentType">
+        <xs:sequence>
+            <xs:element name="method" type="xs:string"/>
+            <xs:element name="transactionId" type="xs:string" minOccurs="0"/>
+            <xs:element name="amount" type="xs:decimal"/>
+            <xs:element name="currency" type="xs:string" default="USD"/>
+            <xs:element name="metadata" type="tns:MetadataType" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Complex Type: Metadata (key-value pairs simulation) -->
+    <xs:complexType name="MetadataType">
+        <xs:sequence>
+            <xs:element name="entry" type="tns:MetadataEntryType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="MetadataEntryType">
+        <xs:sequence>
+            <xs:element name="key" type="xs:string"/>
+            <xs:element name="value" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Complex Type: Shipping Information -->
+    <xs:complexType name="ShippingType">
+        <xs:sequence>
+            <xs:element name="carrier" type="xs:string"/>
+            <xs:element name="trackingNumber" type="xs:string" minOccurs="0"/>
+            <xs:element name="estimatedDelivery" type="xs:date" minOccurs="0"/>
+            <xs:element name="actualDelivery" type="xs:date" minOccurs="0"/>
+            <xs:element name="shippingCost" type="xs:decimal"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Complex Type: Order (root element with all features) -->
+    <xs:complexType name="OrderType">
+        <xs:sequence>
+            <xs:element name="orderId" type="xs:string"/>
+            <xs:element name="orderDate" type="xs:dateTime"/>
+            <xs:element name="status" type="tns:OrderStatusType"/>
+            <xs:element name="customer" type="tns:CustomerType"/>
+            <!-- Array of order items -->
+            <xs:element name="items" type="tns:OrderItemType" minOccurs="1" maxOccurs="unbounded"/>
+            <xs:element name="payment" type="tns:PaymentType"/>
+            <xs:element name="shipping" type="tns:ShippingType" minOccurs="0"/>
+            <xs:element name="notes" type="xs:string" minOccurs="0"/>
+            <xs:element name="totalAmount" type="xs:decimal"/>
+        </xs:sequence>
+        <xs:attribute name="version" type="xs:string" fixed="1.0"/>
+    </xs:complexType>
+
+    <!-- Root element -->
+    <xs:element name="Order" type="tns:OrderType"/>
+
+</xs:schema>

@@ -205,3 +205,14 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-specific generated files
+models/__pycache__/
+generated/
+schemas/
+*.pkl
+*.old
+
+# Intermediate conversion files
+pydantic_models_info.json
+model_names.json
