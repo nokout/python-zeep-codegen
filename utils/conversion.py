@@ -1,13 +1,19 @@
 """
 Shared conversion utilities for dataclass to Pydantic model conversion.
-This module contains common logic used by both step2 and step3 to avoid duplication.
+
+This module contains common logic used by the conversion pipeline to avoid duplication.
+It provides functions for dynamically creating Pydantic models from dataclass types
+using introspection and Pydantic's create_model() API.
 """
-from dataclasses import fields, is_dataclass, MISSING
-from typing import Any
+from dataclasses import fields, is_dataclass, MISSING, Field
+from typing import Any, Type, Tuple, List, Optional, get_type_hints
 from pydantic import create_model
 
 
-def dataclass_to_pydantic_model(dataclass_type: type, model_name: str = None) -> type:
+def dataclass_to_pydantic_model(
+    dataclass_type: Type[Any],
+    model_name: Optional[str] = None
+) -> Type[Any]:
     """
     Dynamically create a Pydantic model from a dataclass type.
     
@@ -47,12 +53,13 @@ def dataclass_to_pydantic_model(dataclass_type: type, model_name: str = None) ->
         model_name = dataclass_type.__name__
     
     # Extract field information from the dataclass
-    field_info = []
+    field_info: List[Tuple[str, Any, Any]] = []
     for field in fields(dataclass_type):
-        field_name = field.name
-        field_type = field.type
+        field_name: str = field.name
+        field_type: Any = field.type
         
         # Get default value if it exists
+        default_value: Any
         if field.default is not MISSING:
             default_value = field.default
         elif field.default_factory is not MISSING:
@@ -63,7 +70,7 @@ def dataclass_to_pydantic_model(dataclass_type: type, model_name: str = None) ->
         field_info.append((field_name, field_type, default_value))
     
     # Build Pydantic field definitions
-    pydantic_fields = {}
+    pydantic_fields: dict[str, Any] = {}
     for field_name, field_type, default_value in field_info:
         if default_value is ...:
             # Required field
@@ -73,12 +80,12 @@ def dataclass_to_pydantic_model(dataclass_type: type, model_name: str = None) ->
             pydantic_fields[field_name] = (field_type, default_value)
     
     # Create the Pydantic model dynamically
-    pydantic_model = create_model(model_name, **pydantic_fields)
+    pydantic_model: Type[Any] = create_model(model_name, **pydantic_fields)
     
     return pydantic_model
 
 
-def inspect_dataclass_fields(dataclass_type: type) -> list[tuple[str, type, Any]]:
+def inspect_dataclass_fields(dataclass_type: Type[Any]) -> List[Tuple[str, Any, Any]]:
     """
     Inspect a dataclass and extract field information.
     
@@ -94,12 +101,13 @@ def inspect_dataclass_fields(dataclass_type: type) -> list[tuple[str, type, Any]
     if not is_dataclass(dataclass_type):
         raise ValueError(f"{dataclass_type} is not a dataclass")
     
-    field_info = []
+    field_info: List[Tuple[str, Any, Any]] = []
     for field in fields(dataclass_type):
-        field_name = field.name
-        field_type = field.type
+        field_name: str = field.name
+        field_type: Any = field.type
         
         # Get default value if it exists
+        default_value: Any
         if field.default is not MISSING:
             default_value = field.default
         elif field.default_factory is not MISSING:
