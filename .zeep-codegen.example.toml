@@ -1,0 +1,14 @@
+# python-zeep-codegen Configuration File (TOML format)
+# This file provides default values for CLI options
+
+# Output directory for generated files
+output_dir = "./generated"
+
+# Keep temporary directory after conversion
+keep_temp = false
+
+# Enable verbose/debug logging
+verbose = false
+
+# HTTP timeout in seconds for downloading remote WSDL/XSD
+timeout = 30
