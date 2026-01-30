@@ -21,7 +21,8 @@ from pipeline import (
     download_from_url,
     generate_dataclasses,
     convert_to_pydantic,
-    generate_json_schema
+    generate_json_schema,
+    generate_web_ui
 )
 from exceptions import WSDLSchemaError
 
@@ -50,7 +51,18 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help='Enable verbose debug output'
 )
-def main(input_file, main_model, output_dir, keep_temp, verbose):
+@click.option(
+    '--generate-ui',
+    is_flag=True,
+    help='Generate interactive web form UI from the JSON Schema'
+)
+@click.option(
+    '--ui-framework',
+    type=click.Choice(['react'], case_sensitive=False),
+    default='react',
+    help='UI framework to use for form generation (default: react)'
+)
+def main(input_file, main_model, output_dir, keep_temp, verbose, generate_ui, ui_framework):
     """Convert XSD/WSDL files to JSON Schema.
 
     INPUT_FILE can be:
@@ -83,6 +95,11 @@ def main(input_file, main_model, output_dir, keep_temp, verbose):
       Enable verbose logging:
       
         python wsdl_to_schema.py input.xsd --main-model Order --verbose
+      
+      Generate interactive web form UI:
+      
+        python wsdl_to_schema.py input.xsd --main-model Order --generate-ui
+        python wsdl_to_schema.py input.xsd --main-model Order --generate-ui --ui-framework react
     """
     
     # Configure logging
@@ -148,6 +165,14 @@ def main(input_file, main_model, output_dir, keep_temp, verbose):
         click.echo(f"{'='*70}")
         schema_file = generate_json_schema(pydantic_models, main_model, output_dir)
         
+        # Step 4: Generate Web UI (optional)
+        ui_dir = None
+        if generate_ui:
+            click.echo(f"\n{'='*70}")
+            click.echo(f"Step 4: Generating Web Form UI ({ui_framework.upper()})")
+            click.echo(f"{'='*70}")
+            ui_dir = generate_web_ui(schema_file, main_model, output_dir, ui_framework)
+        
         # Final summary
         click.echo(f"\n{'='*70}")
         click.echo("✓ Conversion Complete!")
@@ -155,11 +180,17 @@ def main(input_file, main_model, output_dir, keep_temp, verbose):
         click.echo(f"\nGenerated files:")
         click.echo(f"  • Pydantic models: {models_file}")
         click.echo(f"  • JSON Schema: {schema_file}")
+        if ui_dir:
+            click.echo(f"  • Web Form UI: {ui_dir / 'index.html'}")
+            click.echo(f"    Open in browser to see the interactive form!")
         if temp_dir and keep_temp:
             click.echo(f"  • Temp directory: {temp_dir} (preserved)")
         file_type = input_file.suffix.upper().lstrip('.')
         source = 'URL' if is_url else 'File'
-        click.echo(f"\nWorkflow: {source} ({file_type}) → Dataclass (xsdata) → Pydantic → JSON Schema")
+        workflow = f"{source} ({file_type}) → Dataclass (xsdata) → Pydantic → JSON Schema"
+        if generate_ui:
+            workflow += f" → Web UI ({ui_framework.upper()})"
+        click.echo(f"\nWorkflow: {workflow}")
         click.echo()
     
     except WSDLSchemaError as e:

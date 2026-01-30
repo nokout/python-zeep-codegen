@@ -35,3 +35,8 @@ class ConversionError(WSDLSchemaError):
 class SchemaGenerationError(WSDLSchemaError):
     """Raised when JSON schema generation fails."""
     pass
+
+
+class UIGenerationError(WSDLSchemaError):
+    """Raised when UI generation fails."""
+    pass

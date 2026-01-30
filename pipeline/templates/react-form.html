@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Web Form</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px 12px 0 0;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 0 0 12px 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-box {
+            background: #edf2f7;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .info-box h3 {
+            color: #2d3748;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .info-box p {
+            color: #4a5568;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: underline;
+        }
+
+        /* Form styling overrides */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #2d3748;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="email"],
+        input[type="date"],
+        input[type="datetime-local"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button[type="submit"] {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button[type="submit"]:hover {
+            background: #5568d3;
+        }
+
+        .error {
+            color: #e53e3e;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .field-description {
+            color: #718096;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .form-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ title }}</h1>
+            <p>Interactive web form generated from JSON Schema using React JSON Schema Form</p>
+            <span class="badge">Auto-generated UI</span>
+        </div>
+
+        <div class="form-container">
+            <div class="info-box">
+                <h3>📝 About this form</h3>
+                <p>This form was automatically generated from a JSON Schema definition. All validation rules from the schema are enforced client-side. Fill out the form below and submit to see the validated JSON data.</p>
+            </div>
+
+            <div id="app">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading form...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Generated by <a href="https://github.com/nokout/python-zeep-codegen" target="_blank">python-zeep-codegen</a></p>
+            <p style="margin-top: 8px; font-size: 12px;">Powered by React JSON Schema Form</p>
+        </div>
+    </div>
+
+    <!-- React and React DOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- React JSON Schema Form -->
+    <script src="https://unpkg.com/@rjsf/core@5/dist/core.umd.js"></script>
+    <script src="https://unpkg.com/@rjsf/validator-ajv8@5/dist/validator-ajv8.umd.js"></script>
+
+    <script type="text/javascript">
+        // JSON Schema - embedded inline
+        const schema = {{ schema_json }};
+
+        // UI Schema for better form layout
+        const uiSchema = {
+            "ui:submitButtonOptions": {
+                "submitText": "Validate and Submit",
+                "norender": false,
+                "props": {
+                    "className": "btn btn-primary"
+                }
+            }
+        };
+
+        // Form configuration
+        const formData = {};
+
+        // Create the form component
+        const Form = JSONSchemaForm.default;
+        const validator = rjsfValidatorAjv8.default;
+
+        // Handle form submission
+        function onSubmit({formData}, e) {
+            console.log("Form data:", formData);
+            
+            // Display the validated data
+            const resultDiv = document.createElement('div');
+            resultDiv.style.marginTop = '20px';
+            resultDiv.style.padding = '20px';
+            resultDiv.style.background = '#f0fdf4';
+            resultDiv.style.border = '2px solid #86efac';
+            resultDiv.style.borderRadius = '8px';
+            resultDiv.innerHTML = `
+                <h3 style="color: #166534; margin-bottom: 10px;">✓ Validation Successful!</h3>
+                <p style="color: #15803d; margin-bottom: 10px; font-size: 14px;">Your form data has been validated against the schema:</p>
+                <pre style="background: white; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 12px; color: #1f2937;">${JSON.stringify(formData, null, 2)}</pre>
+            `;
+            
+            // Remove any existing result
+            const existingResult = document.querySelector('.result');
+            if (existingResult) {
+                existingResult.remove();
+            }
+            
+            resultDiv.className = 'result';
+            document.querySelector('.form-container').appendChild(resultDiv);
+        }
+
+        // Handle form errors
+        function onError(errors) {
+            console.error("Form errors:", errors);
+        }
+
+        // Render the form
+        const root = ReactDOM.createRoot(document.getElementById('app'));
+        root.render(
+            React.createElement(Form, {
+                schema: schema,
+                uiSchema: uiSchema,
+                formData: formData,
+                validator: validator,
+                onSubmit: onSubmit,
+                onError: onError,
+                showErrorList: 'top'
+            })
+        );
+    </script>
+</body>
+</html>
