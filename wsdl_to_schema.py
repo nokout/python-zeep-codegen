@@ -152,13 +152,14 @@ def generate_dataclasses(xsd_file: str, temp_dir: Path = None, keep_temp: bool =
     return full_module, temp_dir
 
 
-def convert_to_pydantic(module_name: str, temp_dir: Path) -> tuple[dict, Path]:
+def convert_to_pydantic(module_name: str, temp_dir: Path, output_dir: Path = None) -> tuple[dict, Path]:
     """
     Convert dataclasses from module to Pydantic models.
     
     Args:
-        module_name: Fully qualified module name (e.g., 'generated_models.sample_complex')
+        module_name: Fully qualified module name (e.g., 'generated_dataclasses.sample_complex')
         temp_dir: Temporary directory containing generated modules
+        output_dir: Directory where Pydantic models file should be saved
     
     Returns:
         Tuple of (pydantic_models dict, models_output_path)
@@ -224,9 +225,13 @@ def convert_to_pydantic(module_name: str, temp_dir: Path) -> tuple[dict, Path]:
                 print(f"    Warning: Could not rebuild {name}: {e}")
         
         # Save Pydantic models to Python file
-        models_dir = Path("generated")
-        models_dir.mkdir(exist_ok=True)
-        models_file = models_dir / "pydantic_models.py"
+        if output_dir:
+            output_path = Path(output_dir)
+            output_path.mkdir(parents=True, exist_ok=True)
+            models_file = output_path / "pydantic_models.py"
+        else:
+            models_file = Path("generated") / "pydantic_models.py"
+            models_file.parent.mkdir(parents=True, exist_ok=True)
         
         with open(models_file, 'w') as f:
             f.write('"""\nGenerated Pydantic Models\n\n')
@@ -271,14 +276,14 @@ def convert_to_pydantic(module_name: str, temp_dir: Path) -> tuple[dict, Path]:
             sys.path.remove(str(temp_dir))
 
 
-def generate_json_schema(pydantic_models: dict, main_model_name: str, output_file: str = "schemas/unified_schema.json") -> Path:
+def generate_json_schema(pydantic_models: dict, main_model_name: str, output_dir: Path = None) -> Path:
     """
     Generate unified JSON Schema from Pydantic models.
     
     Args:
         pydantic_models: Dictionary of Pydantic models
         main_model_name: Name of the main/root model
-        output_file: Path to output schema file
+        output_dir: Directory to save schema file (default: 'schemas')
     
     Returns:
         Path to generated schema file
@@ -300,20 +305,25 @@ def generate_json_schema(pydantic_models: dict, main_model_name: str, output_fil
     schema = main_model.model_json_schema()
     
     # Ensure output directory exists and clean old schemas
-    output_path = Path(output_file)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_dir:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        schema_path = output_path / "schema.json"
+    else:
+        schema_path = Path("schemas") / "unified_schema.json"
+        schema_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Remove old schema files
-    if output_path.parent.exists():
-        for old_file in output_path.parent.glob("*.json"):
+    # Remove old schema files in this directory
+    if schema_path.parent.exists():
+        for old_file in schema_path.parent.glob("*.json"):
             old_file.unlink()
-            print(f"  Removed old schema: {old_file.name}")
+            print(f"  Removed old file: {old_file.name}")
     
     # Save schema
-    with open(output_path, 'w') as f:
+    with open(schema_path, 'w') as f:
         json.dump(schema, f, indent=2, default=str)
     
-    print(f"  ✓ Generated unified schema: {output_path}")
+    print(f"  ✓ Generated unified schema: {schema_path}")
     
     if '$defs' in schema:
         print(f"  ✓ Main model: {main_model_name}")
@@ -322,12 +332,12 @@ def generate_json_schema(pydantic_models: dict, main_model_name: str, output_fil
         print(f"  ✓ Types: {', '.join(defs_list[:8])}" + 
               (f"... (+{len(defs_list) - 8} more)" if len(defs_list) > 8 else ""))
     
-    # Create summary file
-    summary_file = output_path.parent / "summary.json"
+    # Create summary file in same directory
+    summary_file = schema_path.parent / "summary.json"
     summary = {
         "main_model": main_model_name,
         "total_models": len(pydantic_models),
-        "schema_file": str(output_path),
+        "schema_file": str(schema_path),
         "nested_types": len(schema.get('$defs', {})),
         "models": list(pydantic_models.keys())
     }
@@ -337,7 +347,7 @@ def generate_json_schema(pydantic_models: dict, main_model_name: str, output_fil
     
     print(f"  ✓ Created summary: {summary_file}")
     
-    return output_path
+    return schema_path
 
 
 def main():
@@ -357,9 +367,9 @@ def main():
   # Keep temporary files for debugging
   python wsdl_to_schema.py input.xsd --main-model Order --keep-temp
   
-  # With custom output locations
+  # With custom output directory
   python wsdl_to_schema.py input.wsdl --main-model Request \\
-      --output-schema schemas/my_schema.json
+      --output-dir custom_output
 """
     )
     
@@ -376,9 +386,8 @@ def main():
     )
     
     parser.add_argument(
-        '--output-schema',
-        default='schemas/unified_schema.json',
-        help='Output path for JSON Schema (default: schemas/unified_schema.json)'
+        '--output-dir',
+        help='Output directory for all generated files (default: output/[INPUT_NAME])'
     )
     
     parser.add_argument(
@@ -411,6 +420,13 @@ def main():
     print("║" + " " * 18 + "XSD/WSDL TO JSON SCHEMA" + " " * 27 + "║")
     print("╚" + "═" * 68 + "╝")
     
+    # Determine output directory
+    if args.output_dir:
+        output_dir = Path(args.output_dir)
+    else:
+        # Use input filename as output directory name (preserve original name)
+        output_dir = Path("output") / input_file.stem
+    
     temp_dir = None
     try:
         # Step 1: Generate dataclasses from XSD/WSDL to temp directory
@@ -420,10 +436,10 @@ def main():
         )
         
         # Step 2: Convert to Pydantic models
-        pydantic_models, models_file = convert_to_pydantic(module_name, temp_dir)
+        pydantic_models, models_file = convert_to_pydantic(module_name, temp_dir, output_dir)
         
         # Step 3: Generate JSON Schema
-        schema_file = generate_json_schema(pydantic_models, args.main_model, args.output_schema)
+        schema_file = generate_json_schema(pydantic_models, args.main_model, output_dir)
         
         # Final summary
         print(f"\n{'='*70}")

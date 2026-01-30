@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "CustomerType": {
+      "properties": {
+        "customer_id": {
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        }
+      },
+      "required": [
+        "customer_id",
+        "name",
+        "email"
+      ],
+      "title": "CustomerType",
+      "type": "object"
+    },
+    "ItemListType": {
+      "properties": {
+        "item": {
+          "items": {
+            "$ref": "#/$defs/ItemType"
+          },
+          "title": "Item",
+          "type": "array"
+        }
+      },
+      "title": "ItemListType",
+      "type": "object"
+    },
+    "ItemType": {
+      "properties": {
+        "product_id": {
+          "title": "Product Id",
+          "type": "string"
+        },
+        "quantity": {
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "title": "Price"
+        }
+      },
+      "required": [
+        "product_id",
+        "quantity",
+        "price"
+      ],
+      "title": "ItemType",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "order_id": {
+      "title": "Order Id",
+      "type": "string"
+    },
+    "customer": {
+      "$ref": "#/$defs/CustomerType"
+    },
+    "items": {
+      "$ref": "#/$defs/ItemListType"
+    }
+  },
+  "required": [
+    "order_id",
+    "customer",
+    "items"
+  ],
+  "title": "OrderRequestType",
+  "type": "object"
+}
