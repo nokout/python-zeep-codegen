@@ -12,7 +12,7 @@ Usage:
     python wsdl_to_schema.py input.xsd --main-model Order
     python wsdl_to_schema.py input.xsd --main-model Order --keep-temp
 """
-import argparse
+import click
 import subprocess
 import sys
 import importlib
@@ -350,79 +350,79 @@ def generate_json_schema(pydantic_models: dict, main_model_name: str, output_dir
     return schema_path
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Convert XSD/WSDL files to JSON Schema",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""Examples:
-  # Process local XSD file
-  python wsdl_to_schema.py sample-complex.xsd --main-model Order
-  
-  # Process local WSDL file
-  python wsdl_to_schema.py service.wsdl --main-model OrderRequestType
-  
-  # Process WSDL from HTTP URL
-  python wsdl_to_schema.py https://example.com/service?wsdl --main-model Order
-  
-  # Keep temporary files for debugging
-  python wsdl_to_schema.py input.xsd --main-model Order --keep-temp
-  
-  # With custom output directory
-  python wsdl_to_schema.py input.wsdl --main-model Request \\
-      --output-dir custom_output
-"""
-    )
-    
-    parser.add_argument(
-        'input_file',
-        metavar='FILE',
-        help='Path to XSD/WSDL file or HTTP/HTTPS URL'
-    )
-    
-    parser.add_argument(
-        '--main-model',
-        required=True,
-        help='Name of the main/root model for the unified schema (e.g., Order, Customer)'
-    )
-    
-    parser.add_argument(
-        '--output-dir',
-        help='Output directory for all generated files (default: output/[INPUT_NAME])'
-    )
-    
-    parser.add_argument(
-        '--keep-temp',
-        action='store_true',
-        help='Keep temporary directory with generated dataclasses (for debugging)'
-    )
-    
-    args = parser.parse_args()
+@click.command()
+@click.argument('input_file', type=click.Path())
+@click.option(
+    '--main-model',
+    required=True,
+    help='Name of the main/root model for the unified schema (e.g., Order, Customer)'
+)
+@click.option(
+    '--output-dir',
+    type=click.Path(),
+    help='Output directory for all generated files (default: output/[INPUT_NAME])'
+)
+@click.option(
+    '--keep-temp',
+    is_flag=True,
+    help='Keep temporary directory with generated dataclasses (for debugging)'
+)
+def main(input_file, main_model, output_dir, keep_temp):
+    """Convert XSD/WSDL files to JSON Schema.
+
+    INPUT_FILE can be:
+      - Path to a local XSD file
+      - Path to a local WSDL file  
+      - HTTP/HTTPS URL to a remote WSDL/XSD
+
+    Examples:
+
+      Process local XSD file:
+      
+        python wsdl_to_schema.py sample-complex.xsd --main-model Order
+
+      Process local WSDL file:
+      
+        python wsdl_to_schema.py service.wsdl --main-model OrderRequestType
+
+      Process WSDL from HTTP URL:
+      
+        python wsdl_to_schema.py https://example.com/service?wsdl --main-model Order
+
+      Keep temporary files for debugging:
+      
+        python wsdl_to_schema.py input.xsd --main-model Order --keep-temp
+
+      With custom output directory:
+      
+        python wsdl_to_schema.py input.wsdl --main-model Request --output-dir custom_output
+    """
     
     # Check if input is URL or local file
-    is_url = args.input_file.startswith(('http://', 'https://'))
+    is_url = input_file.startswith(('http://', 'https://'))
     
     if is_url:
         # Download from URL
-        input_file = download_from_url(args.input_file)
+        input_file = download_from_url(input_file)
     else:
         # Validate local file exists
-        input_file = Path(args.input_file)
+        input_file = Path(input_file)
         if not input_file.exists():
-            print(f"❌ Error: File not found: {args.input_file}")
+            click.echo(f"❌ Error: File not found: {input_file}")
             sys.exit(1)
         
         # Validate file type
         if input_file.suffix.lower() not in ['.xsd', '.wsdl']:
-            print(f"⚠️  Warning: File extension '{input_file.suffix}' is not .xsd or .wsdl")
-            print(f"    Proceeding anyway, but xsdata may not recognize the file format.")
+            click.echo(f"⚠️  Warning: File extension '{input_file.suffix}' is not .xsd or .wsdl")
+            click.echo(f"    Proceeding anyway, but xsdata may not recognize the file format.")
     
-    print("\n" + "╔" + "═" * 68 + "╗")
-    print("║" + " " * 18 + "XSD/WSDL TO JSON SCHEMA" + " " * 27 + "║")
-    print("╚" + "═" * 68 + "╝")
+    click.echo("\n" + "╔" + "═" * 68 + "╗")
+    click.echo("║" + " " * 18 + "XSD/WSDL TO JSON SCHEMA" + " " * 27 + "║")
+    click.echo("╚" + "═" * 68 + "╝")
     
     # Determine output directory
-    if args.output_dir:
-        output_dir = Path(args.output_dir)
+    if output_dir:
+        output_dir = Path(output_dir)
     else:
         # Use input filename as output directory name (preserve original name)
         output_dir = Path("output") / input_file.stem
@@ -432,37 +432,37 @@ def main():
         # Step 1: Generate dataclasses from XSD/WSDL to temp directory
         module_name, temp_dir = generate_dataclasses(
             str(input_file), 
-            keep_temp=args.keep_temp
+            keep_temp=keep_temp
         )
         
         # Step 2: Convert to Pydantic models
         pydantic_models, models_file = convert_to_pydantic(module_name, temp_dir, output_dir)
         
         # Step 3: Generate JSON Schema
-        schema_file = generate_json_schema(pydantic_models, args.main_model, output_dir)
+        schema_file = generate_json_schema(pydantic_models, main_model, output_dir)
         
         # Final summary
-        print(f"\n{'='*70}")
-        print("✓ Conversion Complete!")
-        print(f"{'='*70}")
-        print(f"\nGenerated files:")
-        print(f"  • Pydantic models: {models_file}")
-        print(f"  • JSON Schema: {schema_file}")
-        if temp_dir and args.keep_temp:
-            print(f"  • Temp directory: {temp_dir} (preserved)")
+        click.echo(f"\n{'='*70}")
+        click.echo("✓ Conversion Complete!")
+        click.echo(f"{'='*70}")
+        click.echo(f"\nGenerated files:")
+        click.echo(f"  • Pydantic models: {models_file}")
+        click.echo(f"  • JSON Schema: {schema_file}")
+        if temp_dir and keep_temp:
+            click.echo(f"  • Temp directory: {temp_dir} (preserved)")
         file_type = input_file.suffix.upper().lstrip('.')
         source = 'URL' if is_url else 'File'
-        print(f"\nWorkflow: {source} ({file_type}) → Dataclass (xsdata) → Pydantic → JSON Schema")
-        print()
+        click.echo(f"\nWorkflow: {source} ({file_type}) → Dataclass (xsdata) → Pydantic → JSON Schema")
+        click.echo()
     
     finally:
         # Clean up temporary directory unless --keep-temp is specified
-        if temp_dir and not args.keep_temp:
+        if temp_dir and not keep_temp:
             try:
                 shutil.rmtree(temp_dir, ignore_errors=True)
-                print(f"  ✓ Cleaned up temporary directory")
+                click.echo(f"  ✓ Cleaned up temporary directory")
             except Exception as e:
-                print(f"  ⚠️ Warning: Could not clean up temp directory: {e}")
+                click.echo(f"  ⚠️ Warning: Could not clean up temp directory: {e}")
 
 
 if __name__ == "__main__":

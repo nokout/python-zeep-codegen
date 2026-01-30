@@ -138,8 +138,8 @@
 
 ---
 
-### ⏭️ Task 7: Migrate CLI from argparse to Click
-**Status**: To Do  
+### ✅ Task 7: Migrate CLI from argparse to Click
+**Status**: Completed  
 **Priority**: Low  
 **Description**: Replace argparse with Click library for a more modern, declarative CLI interface. Click provides better command composition, automatic help generation, and cleaner parameter handling.
 
@@ -156,6 +156,53 @@
 - Easier to add subcommands in future
 - Type validation built-in
 
+**Results**:
+- Migrated from argparse to Click decorators
+- All functionality preserved (input_file, --main-model, --output-dir, --keep-temp)
+- Improved help text with detailed examples
+- Better error messages (e.g., missing required options)
+- Replaced print() with click.echo() for better output handling
+
+---
+
+### ⏭️ Task 8: Auto-derive main model from input file
+**Status**: To Do  
+**Priority**: Medium  
+**Description**: Make --main-model parameter optional by automatically deriving the main model from the input file. When not provided, analyze the generated dataclasses and intelligently select the most appropriate root model.
+
+**Requirements**:
+- Make --main-model optional (not required)
+- Analyze generated dataclasses to find suitable root model
+- Selection heuristics:
+  - Prefer models with "Request", "Order", "Message", or similar root-level names
+  - Prefer models that reference other models (composite types)
+  - Exclude simple types, enums, and helper classes
+  - If multiple candidates exist, choose the first or most complex
+- Fallback to user-provided --main-model if automatic selection is ambiguous
+- Display selected model name in output for transparency
+
+**Implementation Notes**:
+- After xsdata generation, inspect all dataclasses
+- Score each class based on heuristics (name patterns, field count, complexity)
+- Provide --main-model as override for manual selection
+- Consider adding --list-models flag to show all available models
+
+**Benefits**:
+- Simplified CLI usage for common cases
+- Better user experience (fewer required parameters)
+- Still allows manual override when needed
+- Useful for quick exploration of unknown WSDL/XSD files
+
+**Example Usage**:
+```bash
+# Auto-select main model
+python wsdl_to_schema.py sample-complex.xsd
+# Output: "Using auto-detected main model: Order"
+
+# Manual override
+python wsdl_to_schema.py sample-complex.xsd --main-model CustomerType
+```
+
 ---
 
 ## Notes
@@ -168,12 +215,13 @@
 The most critical task is **Task 5** (Eliminate dataclass file dependency) as it affects the core architecture and determines how the other tasks should be implemented.
 
 **Recommended Order**:
-1. Task 5 (Critical - fixes architecture)
-2. Task 3 (High - WSDL support)
-3. Task 4 (High - HTTP support)
-4. Task 6 (Medium - output organization)
+1. ~~Task 5 (Critical - fixes architecture)~~ ✅
+2. ~~Task 3 (High - WSDL support)~~ ✅
+3. ~~Task 4 (High - HTTP support)~~ ✅
+4. ~~Task 6 (Medium - output organization)~~ ✅
 5. Task 2 (Complete - xsdata config review)
-6. Task 7 (Low - CLI improvement)
+6. ~~Task 7 (Low - CLI improvement)~~ ✅
+7. Task 8 (Medium - auto-derive main model)
 
 ---
 
