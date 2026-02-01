@@ -29,7 +29,8 @@ from pipeline import (
     download_from_url,
     generate_dataclasses,
     convert_to_pydantic,
-    generate_json_schema
+    generate_json_schema,
+    generate_individual_schemas
 )
 from exceptions import WSDLSchemaError
 from utils.config import Config
@@ -64,13 +65,19 @@ logger: logging.Logger = logging.getLogger(__name__)
     type=click.Path(exists=True),
     help='Path to configuration file (YAML or TOML). If not specified, searches for .zeep-codegen.yaml/.toml'
 )
+@click.option(
+    '--individual-schemas',
+    is_flag=True,
+    help='Generate individual schema files for each type (better for VS Code editing)'
+)
 def main(
     input_file: str,
     main_model: str,
     output_dir: Optional[str],
     keep_temp: bool,
     verbose: bool,
-    config: Optional[str]
+    config: Optional[str],
+    individual_schemas: bool
 ) -> None:
     """Convert XSD/WSDL files to JSON Schema.
 
@@ -95,6 +102,10 @@ def main(
       Process WSDL from HTTP URL:
       
         python wsdl_to_schema.py https://example.com/service?wsdl --main-model Order
+
+      Generate individual schemas for VS Code editing:
+      
+        python wsdl_to_schema.py input.xsd --main-model Order --individual-schemas
 
       Keep temporary files for debugging:
       
@@ -203,9 +214,22 @@ def main(
         click.echo(f"\n{'='*70}")
         click.echo("Step 3: Generating JSON Schema")
         click.echo(f"{'='*70}")
-        schema_file: Path = generate_json_schema(
-            pydantic_models, main_model, final_output_dir
-        )
+        
+        schema_file: Path
+        schema_dir: Path
+        
+        if individual_schemas:
+            # Generate individual schema files for each type
+            schema_dir = generate_individual_schemas(
+                pydantic_models, final_output_dir
+            )
+            schema_file = schema_dir / "index.json"
+        else:
+            # Generate unified schema with main model as root
+            schema_file = generate_json_schema(
+                pydantic_models, main_model, final_output_dir
+            )
+            schema_dir = schema_file.parent
         
         # Final summary
         click.echo(f"\n{'='*70}")
@@ -213,12 +237,18 @@ def main(
         click.echo(f"{'='*70}")
         click.echo(f"\nGenerated files:")
         click.echo(f"  • Pydantic models: {models_file}")
-        click.echo(f"  • JSON Schema: {schema_file}")
+        if individual_schemas:
+            click.echo(f"  • JSON Schemas (individual): {schema_dir}")
+            click.echo(f"    - Generated {len(pydantic_models)} schema files")
+            click.echo(f"    - Each type can be edited in VS Code with IntelliSense")
+        else:
+            click.echo(f"  • JSON Schema (unified): {schema_file}")
         if temp_dir and keep_temp:
             click.echo(f"  • Temp directory: {temp_dir} (preserved)")
         file_type: str = Path(input_file).suffix.upper().lstrip('.')
         source: str = 'URL' if is_url else 'File'
-        click.echo(f"\nWorkflow: {source} ({file_type}) → Dataclass (xsdata) → Pydantic → JSON Schema")
+        mode_desc: str = "Individual Schemas" if individual_schemas else "Unified Schema"
+        click.echo(f"\nWorkflow: {source} ({file_type}) → Dataclass (xsdata) → Pydantic → {mode_desc}")
         click.echo()
     
     except WSDLSchemaError as e:
