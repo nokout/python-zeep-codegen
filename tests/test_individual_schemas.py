@@ -172,3 +172,51 @@ def test_generate_individual_schemas_with_nested_refs(temp_test_dir: Path) -> No
     # Should have $defs section with referenced types
     assert '$defs' in schema
     assert 'Middle' in schema['$defs']
+
+
+@pytest.mark.unit
+def test_generate_individual_schemas_with_empty_models() -> None:
+    """Test that empty model dictionary is handled gracefully."""
+    from pathlib import Path
+    import tempfile
+    
+    with tempfile.TemporaryDirectory() as tmpdir:
+        temp_path = Path(tmpdir)
+        models = {}
+        
+        # Should complete without errors
+        schema_dir = generate_individual_schemas(models, temp_path)
+        
+        # Index file should still be created
+        index_file = schema_dir / "index.json"
+        assert index_file.exists()
+        
+        import json
+        with open(index_file) as f:
+            index = json.load(f)
+        
+        assert index['total_schemas'] == 0
+        assert len(index['generated_schemas']) == 0
+
+
+@pytest.mark.unit
+def test_generate_individual_schemas_io_error(temp_test_dir: Path, monkeypatch) -> None:
+    """Test that IO errors during schema generation are caught."""
+    import json
+    from unittest.mock import Mock
+    
+    class FailingModel(BaseModel):
+        value: str
+    
+    models = {'FailingModel': FailingModel}
+    
+    # Mock json.dump to raise an error
+    original_dump = json.dump
+    def failing_dump(*args, **kwargs):
+        raise IOError("Simulated IO error")
+    
+    monkeypatch.setattr('json.dump', failing_dump)
+    
+    # Should raise SchemaGenerationError wrapping the IOError
+    with pytest.raises(SchemaGenerationError, match="Failed to generate schema"):
+        generate_individual_schemas(models, temp_test_dir)

@@ -146,10 +146,9 @@ def generate_individual_schemas(
     schema_dir.mkdir(parents=True, exist_ok=True)
     
     # Remove old schema files in this directory
-    if schema_dir.exists():
-        for old_file in schema_dir.glob("*.json"):
-            old_file.unlink()
-            logger.debug(f"Removed old file: {old_file.name}")
+    for old_file in schema_dir.glob("*.json"):
+        old_file.unlink()
+        logger.debug(f"Removed old file: {old_file.name}")
     
     # Generate a schema file for each model
     generated_files: List[Path] = []
@@ -175,13 +174,22 @@ def generate_individual_schemas(
     
     # Create index/summary file
     index_file: Path = schema_dir / "index.json"
+    
+    # Build usage example if we have at least one schema
+    example_usage: str
+    if generated_files:
+        example_schema_name: str = generated_files[0].stem.replace('.schema', '')
+        example_usage = f"To edit a {example_schema_name} document, add: {{\"$schema\": \"./{generated_files[0].name}\"}}"
+    else:
+        example_usage = "No schemas generated"
+    
     index_data: Dict[str, Any] = {
         "description": "Individual JSON Schemas for VS Code authoring",
         "generated_schemas": [f.name for f in generated_files],
         "total_schemas": len(generated_files),
         "usage": {
             "vscode": "Reference any schema with: {\"$schema\": \"./SchemaName.schema.json\"}",
-            "example": f"To edit a {generated_files[0].stem.replace('.schema', '')} document, add: {{\"$schema\": \"./{generated_files[0].name}\"}}"
+            "example": example_usage
         }
     }
     
