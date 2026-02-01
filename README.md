@@ -17,12 +17,13 @@ The tool is designed to work alongside [zeep](https://docs.python-zeep.org/) for
 ✅ **Automated Pipeline**: Single command converts XSD → Dataclasses → Pydantic → JSON Schema  
 ✅ **Complex Structure Support**: Handles nested elements, arrays, enums, attributes, and mappings  
 ✅ **Unified Schema Generation**: Creates self-contained JSON Schema with `$defs` for all types  
+✅ **Individual Schema Mode**: Generate separate schema files for VS Code editing (NEW!)  
 ✅ **Type Safety**: Full static type checking with mypy  
 ✅ **Zero Hardcoding**: Generic conversion logic works with any WSDL/XSD  
 ✅ **Coexistence Model**: Works alongside zeep for SOAP operations  
 ✅ **Configuration Files**: Support for YAML/TOML config files for default settings  
 ✅ **Plugin Architecture**: Extensible output format system  
-✅ **Comprehensive Testing**: 39 passing tests with pytest  
+✅ **Comprehensive Testing**: 44 passing tests with pytest  
 ✅ **Production Ready**: Context managers, proper error handling, logging  
 
 ## Installation
@@ -78,6 +79,37 @@ This will:
 1. Generate Python dataclasses in `models/`
 2. Convert them to Pydantic models in `generated/pydantic_models.py`
 3. Generate unified JSON Schema in `schemas/unified_schema.json`
+
+### Individual Schemas for VS Code Editing (New!)
+
+Generate individual schema files for each type to enable VS Code IntelliSense for all types:
+
+```bash
+python wsdl_to_schema.py tests/sample.xsd --main-model Order --individual-schemas
+```
+
+This creates separate schema files (`CustomerType.schema.json`, `ProductType.schema.json`, etc.) that can be referenced in JSON documents:
+
+```json
+{
+  "$schema": "./CustomerType.schema.json",
+  "customer_id": "C123",
+  "name": "John Doe",
+  ...
+}
+```
+
+**Benefits:**
+- ✨ Edit JSON documents for **any** type, not just the root
+- 🎯 Full VS Code IntelliSense (autocomplete, validation, hover docs)
+- 📝 Perfect for creating test data, API payloads, or configuration files
+- 🚀 No workarounds needed - just reference the schema
+
+**Comparison:**
+- **Unified mode** (default): One schema with root type + `$defs` for nested types
+- **Individual mode** (`--individual-schemas`): Separate schema file for each type
+
+Use individual mode when working with VS Code or other JSON editors that need top-level schema support.
 
 ### With Custom Module Name
 
@@ -209,6 +241,7 @@ print(validated_order.model_dump_json())
 ```
 usage: wsdl_to_schema.py [-h] --main-model MAIN_MODEL [--output-dir OUTPUT_DIR]
                           [--keep-temp] [--verbose] [--config CONFIG]
+                          [--individual-schemas]
                           xsd_file
 
 positional arguments:
@@ -223,6 +256,8 @@ optional arguments:
   --output-dir OUTPUT_DIR
                         Output directory for all generated files
                         (default: output/[INPUT_NAME] or from config)
+  --individual-schemas  Generate individual schema files for each type
+                        (better for VS Code editing of any type)
   --keep-temp           Keep temporary directory with generated dataclasses
                         (for debugging)
   --verbose, -v         Enable verbose debug output
