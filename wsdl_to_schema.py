@@ -29,7 +29,8 @@ from pipeline import (
     download_from_url,
     generate_dataclasses,
     convert_to_pydantic,
-    generate_json_schema
+    generate_json_schema,
+    generate_angular_forms
 )
 from exceptions import WSDLSchemaError
 from utils.config import Config
@@ -60,6 +61,11 @@ logger: logging.Logger = logging.getLogger(__name__)
     help='Enable verbose debug output'
 )
 @click.option(
+    '--generate-ui',
+    is_flag=True,
+    help='Generate Angular Reactive Forms with Angular Material components'
+)
+@click.option(
     '--config',
     type=click.Path(exists=True),
     help='Path to configuration file (YAML or TOML). If not specified, searches for .zeep-codegen.yaml/.toml'
@@ -70,9 +76,10 @@ def main(
     output_dir: Optional[str],
     keep_temp: bool,
     verbose: bool,
+    generate_ui: bool,
     config: Optional[str]
 ) -> None:
-    """Convert XSD/WSDL files to JSON Schema.
+    """Convert XSD/WSDL files to JSON Schema and optionally Angular Forms.
 
     INPUT_FILE can be:
       - Path to a local XSD file
@@ -95,6 +102,10 @@ def main(
       Process WSDL from HTTP URL:
       
         python wsdl_to_schema.py https://example.com/service?wsdl --main-model Order
+
+      Generate Angular Reactive Forms:
+      
+        python wsdl_to_schema.py input.xsd --main-model Order --generate-ui
 
       Keep temporary files for debugging:
       
@@ -207,6 +218,16 @@ def main(
             pydantic_models, main_model, final_output_dir
         )
         
+        # Step 4: Generate Angular Forms (optional)
+        angular_component_dir: Optional[Path] = None
+        if generate_ui:
+            click.echo(f"\n{'='*70}")
+            click.echo("Step 4: Generating Angular Reactive Forms")
+            click.echo(f"{'='*70}")
+            angular_component_dir = generate_angular_forms(
+                pydantic_models, main_model, final_output_dir
+            )
+        
         # Final summary
         click.echo(f"\n{'='*70}")
         click.echo("✓ Conversion Complete!")
@@ -214,11 +235,16 @@ def main(
         click.echo(f"\nGenerated files:")
         click.echo(f"  • Pydantic models: {models_file}")
         click.echo(f"  • JSON Schema: {schema_file}")
+        if angular_component_dir:
+            click.echo(f"  • Angular Forms: {angular_component_dir}")
         if temp_dir and keep_temp:
             click.echo(f"  • Temp directory: {temp_dir} (preserved)")
         file_type: str = Path(input_file).suffix.upper().lstrip('.')
         source: str = 'URL' if is_url else 'File'
-        click.echo(f"\nWorkflow: {source} ({file_type}) → Dataclass (xsdata) → Pydantic → JSON Schema")
+        workflow: str = f"{source} ({file_type}) → Dataclass (xsdata) → Pydantic → JSON Schema"
+        if generate_ui:
+            workflow += " → Angular Forms"
+        click.echo(f"\nWorkflow: {workflow}")
         click.echo()
     
     except WSDLSchemaError as e:

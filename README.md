@@ -9,12 +9,14 @@ A Python-based tool for converting WSDL/XSD definitions into modern, developer-f
 - **Python Dataclasses** from XSD schemas (via xsdata)
 - **Pydantic Models** for data validation and type safety
 - **JSON Schemas** for API documentation, form generation, and cross-platform compatibility
+- **Angular Reactive Forms** (optional) with Angular Material components for instant web UI
 
 The tool is designed to work alongside [zeep](https://docs.python-zeep.org/) for SOAP operations while providing static type information and modern data validation.
 
 ## Features
 
 ✅ **Automated Pipeline**: Single command converts XSD → Dataclasses → Pydantic → JSON Schema  
+✅ **Angular Form Generation**: Optionally generate ready-to-use Angular forms with Material UI  
 ✅ **Complex Structure Support**: Handles nested elements, arrays, enums, attributes, and mappings  
 ✅ **Unified Schema Generation**: Creates self-contained JSON Schema with `$defs` for all types  
 ✅ **Type Safety**: Full static type checking with mypy  
@@ -22,7 +24,7 @@ The tool is designed to work alongside [zeep](https://docs.python-zeep.org/) for
 ✅ **Coexistence Model**: Works alongside zeep for SOAP operations  
 ✅ **Configuration Files**: Support for YAML/TOML config files for default settings  
 ✅ **Plugin Architecture**: Extensible output format system  
-✅ **Comprehensive Testing**: 39 passing tests with pytest  
+✅ **Comprehensive Testing**: 52 passing tests with pytest  
 ✅ **Production Ready**: Context managers, proper error handling, logging  
 
 ## Installation
@@ -79,6 +81,32 @@ This will:
 2. Convert them to Pydantic models in `generated/pydantic_models.py`
 3. Generate unified JSON Schema in `schemas/unified_schema.json`
 
+### Generate Angular Forms
+
+Add the `--generate-ui` flag to automatically generate Angular Reactive Forms with Material components:
+
+```bash
+# Generate Angular forms along with JSON Schema
+wsdl-to-schema tests/sample.xsd --main-model Order --generate-ui
+
+# Or from source
+python wsdl_to_schema.py tests/sample.xsd --main-model Order --generate-ui
+```
+
+This will additionally create:
+- `angular/order-form/order-form.component.ts` - TypeScript component with reactive form
+- `angular/order-form/order-form.component.html` - Angular Material form template
+- `angular/order-form/order-form.component.css` - Component styles
+- `angular/order-form/order-form.module.ts` - Module with Material imports
+- `angular/order-form/README.md` - Setup and usage instructions
+
+The generated Angular form includes:
+- ✅ TypeScript interfaces matching the Pydantic model
+- ✅ Reactive forms with FormBuilder and validation
+- ✅ Angular Material components (mat-input, mat-checkbox, etc.)
+- ✅ Field validators derived from Pydantic constraints
+- ✅ Ready-to-use in your Angular application
+
 ### With Custom Module Name
 
 If you've already generated models or want to use a specific module:
@@ -98,13 +126,13 @@ python wsdl_to_schema.py input.xsd --main-model Order \
 
 ## Architecture
 
-### Three-Step Pipeline
+### Pipeline Overview
 
 ```
-┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
-│  XSD/WSDL   │─────────│  Dataclasses│─────────│   Pydantic  │─────────│    JSON     │
-│    File     │ xsdata  │   (typed)   │ dynamic │   Models    │ builtin │   Schema    │
-└─────────────┘         └─────────────┘         └─────────────┘         └─────────────┘
+┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
+│  XSD/WSDL   │─────────│  Dataclasses│─────────│   Pydantic  │─────────│    JSON     │─────────│   Angular   │
+│    File     │ xsdata  │   (typed)   │ dynamic │   Models    │ builtin │   Schema    │optional │    Forms    │
+└─────────────┘         └─────────────┘         └─────────────┘         └─────────────┘         └─────────────┘
 ```
 
 **Step 1: XSD → Dataclasses** (via xsdata)
@@ -124,6 +152,13 @@ python wsdl_to_schema.py input.xsd --main-model Order \
 - All types defined once, referenced via `$ref`
 - Self-contained and portable
 
+**Step 4: Pydantic → Angular Forms** (optional, with `--generate-ui`)
+- Generates TypeScript interfaces from Pydantic models
+- Creates Angular Reactive Forms with FormBuilder
+- Maps field types to Angular Material components
+- Includes validators from Pydantic constraints
+- Ready-to-use Angular component with template and styles
+
 ### Generated Files
 
 ```
@@ -132,9 +167,17 @@ project/
 │   └── sample_complex.py           # xsdata-generated dataclasses
 ├── generated/                       # Step 2 output
 │   └── pydantic_models.py          # Pydantic models (for reference)
-└── schemas/                         # Step 3 output
-    ├── unified_schema.json         # Main JSON Schema
-    └── summary.json                # Metadata
+├── schemas/                         # Step 3 output
+│   ├── unified_schema.json         # Main JSON Schema
+│   └── summary.json                # Metadata
+└── angular/                         # Step 4 output (with --generate-ui)
+    ├── order-form/
+    │   ├── order-form.component.ts    # TypeScript component
+    │   ├── order-form.component.html  # Angular Material template
+    │   ├── order-form.component.css   # Component styles
+    │   ├── order-form.module.ts       # Angular module
+    │   └── README.md                  # Setup instructions
+    └── generation-summary.json        # Generation metadata
 ```
 
 ## Usage Examples
@@ -204,11 +247,47 @@ validated_order = Order(**response_dict)
 print(validated_order.model_dump_json())
 ```
 
+### Example 4: Generate Angular Forms
+
+```bash
+# Generate Angular forms with the --generate-ui flag
+python wsdl_to_schema.py customer-schema.xsd --main-model Customer --generate-ui
+
+# This creates an Angular component in output/angular/customer-form/
+```
+
+Then in your Angular application:
+
+```typescript
+// Import the module in your app.module.ts
+import { CustomerFormModule } from './path/to/customer-form/customer-form.module';
+
+@NgModule({
+  imports: [
+    // ... other imports
+    CustomerFormModule
+  ]
+})
+export class AppModule { }
+```
+
+```html
+<!-- Use the component in your template -->
+<app-customer-form></app-customer-form>
+```
+
+The generated form includes:
+- TypeScript interfaces matching your WSDL types
+- Reactive form with validation
+- Angular Material components (mat-input, mat-checkbox, mat-datepicker, etc.)
+- Automatic field type mapping (string → text input, number → number input, boolean → checkbox, etc.)
+- Built-in validation from Pydantic constraints
+
 ## Command-Line Reference
 
 ```
 usage: wsdl_to_schema.py [-h] --main-model MAIN_MODEL [--output-dir OUTPUT_DIR]
-                          [--keep-temp] [--verbose] [--config CONFIG]
+                          [--keep-temp] [--verbose] [--generate-ui] [--config CONFIG]
                           xsd_file
 
 positional arguments:
@@ -226,6 +305,7 @@ optional arguments:
   --keep-temp           Keep temporary directory with generated dataclasses
                         (for debugging)
   --verbose, -v         Enable verbose debug output
+  --generate-ui         Generate Angular Reactive Forms with Angular Material components
   --config CONFIG       Path to configuration file (YAML or TOML)
                         If not specified, searches for .zeep-codegen.yaml/.toml
 ```
@@ -399,12 +479,14 @@ This project includes comprehensive research documentation:
 2. **Forward Reference Resolution**: Two-pass model building with comprehensive namespace
 3. **Unified Schema**: Single JSON Schema file with `$defs` for all types (no duplication)
 4. **Enum Handling**: Preserves original Enum classes in Pydantic models
+5. **Angular Form Generation**: Automatic UI generation with TypeScript interfaces and Material components
 
 ### Future Work
 
 - ⏳ **Zeep Runtime Integration Testing**: Validate coexistence model with actual SOAP services
-- ⏳ **Web Form Generation**: Research Angular JSON Schema form libraries
+- ✅ **Angular Web Form Generation**: Complete! Generate Reactive Forms with Material components
 - ⏳ **WSDL Service/Binding Handling**: Extend beyond XSD type definitions
+- ⏳ **Additional Frameworks**: Support for React, Vue, or other frontend frameworks
 
 ## Project Structure
 
@@ -417,7 +499,8 @@ python-zeep-codegen/
 │   ├── download.py                # URL download functionality
 │   ├── generate.py                # xsdata dataclass generation
 │   ├── convert.py                 # Dataclass to Pydantic conversion
-│   └── schema.py                  # JSON Schema generation
+│   ├── schema.py                  # JSON Schema generation
+│   └── angular_forms.py           # Angular Reactive Forms generation
 ├── utils/                          # Shared utilities
 │   ├── __init__.py
 │   ├── conversion.py              # Conversion helpers
