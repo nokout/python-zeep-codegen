@@ -154,7 +154,8 @@ def test_generate_angular_component() -> None:
     
     # Check HTML template
     html_content = files['html']
-    assert 'formGroup="simplepydanticmodelForm"' in html_content or '[formGroup]' in html_content
+    # Angular uses property binding syntax [formGroup]
+    assert '[formGroup]' in html_content
     assert 'mat-form-field' in html_content or 'mat-checkbox' in html_content
     assert 'mat-raised-button' in html_content
     

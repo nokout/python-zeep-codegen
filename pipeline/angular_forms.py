@@ -15,6 +15,7 @@ from enum import Enum
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
+from pydantic_core import PydanticUndefined
 
 from exceptions import WSDLSchemaError
 
@@ -212,8 +213,6 @@ def _generate_angular_component(
         default_val = 'null'
         
         # Check if field has a real default value
-        from pydantic_core import PydanticUndefined
-        
         if field_info.default is not PydanticUndefined and field_info.default is not None:
             # Handle different types of defaults
             if isinstance(field_info.default, str):
