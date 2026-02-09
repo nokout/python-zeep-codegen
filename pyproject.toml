@@ -13,8 +13,7 @@ authors = [
 maintainers = [
     {name = "Nigel O'Keefe", email = "nokout@example.com"}
 ]
-license = {text = "MIT"}
-license-files = ["LICENSE"]
+license = {file = "LICENSE"}
 keywords = [
     "wsdl",
     "xsd",
